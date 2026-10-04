@@ -183,7 +183,7 @@ kbd{font:500 11px var(--fm);padding:2px 6px;background:rgba(var(--ov),.09);
 .menu.compact .mi .chk svg{width:13px;height:13px}
 @keyframes menuin{from{opacity:0;transform:scale(.97) translateY(-3px)}}
 @keyframes menuin-c{from{opacity:0;transform:translateX(-50%) scale(.97) translateY(-3px)}}
-.menu .mi{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--br);color:rgba(var(--ink-rgb),.92)}
+.menu .mi{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--br);color:rgba(var(--ink-rgb),.92);cursor:pointer}
 .menu .mi:hover{background:var(--acc);color:#fff}
 .menu .mi .tail{margin-left:auto;display:flex;align-items:center;gap:8px}
 .menu .mi .chk{width:14px;height:14px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--acc)}
@@ -193,7 +193,7 @@ kbd{font:500 11px var(--fm);padding:2px 6px;background:rgba(var(--ov),.09);
 .menu .mi:hover svg{color:#fff}
 .menu .mi .k{color:rgba(var(--ov),.35);font:400 11px var(--fm);display:flex;gap:3px}
 .menu .mi:hover .k{color:rgba(var(--ov),.75)}
-.menu .mi.dis{opacity:.35;pointer-events:none}
+.menu .mi.dis{opacity:.35;pointer-events:none;cursor:default}
 .msep{height:1px;background:var(--hair);margin:4px 8px}
 
 /* ============ dock ============ */
