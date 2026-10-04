@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" data-acc="zap">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bitos OS — web</title>
+  <link rel="icon" href="data:,">
+  <!--
+    BITOS WEB ENTRYPOINT
+    A no-build ES-module version of the Bitos shell for the browser and static
+    hosting. Vendored VanJS is a classic global script; everything else is a
+    module. src/main.js loads the app manifest, then starts boot. Serve over
+    http(s) — module scripts do not run from file://.
+    Source layout lives in README.md.
+  -->
+  <link rel="stylesheet" href="styles/fonts/fonts.css">
+  <link rel="stylesheet" href="styles/style.css">
+</head>
+<body>
+
+  <div id="boot"></div>
+  <div id="setup" class="hide"></div>
+
+  <div id="os" class="hide">
+    <div id="menubar"></div>
+    <div id="desktop">
+      <canvas id="wall"></canvas>
+      <div id="snap"></div>
+      <div id="dicons"></div>
+    </div>
+    <div id="dock"></div>
+  </div>
+
+  <div id="lock" class="hide"></div>
+
+  <div id="spot" class="hide">
+    <div class="sp">
+      <div class="sp-in">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/>
+        </svg>
+        <input placeholder="apps, handbook, actions …" spellcheck="false">
+      </div>
+      <div class="sp-list"></div>
+      <div class="sp-foot">↑ ↓ navigate · enter open · esc close — everything is one keystroke away</div>
+    </div>
+  </div>
+
+  <div id="cc" class="hide"></div>
+  <div id="toasts"></div>
+
+  <!-- vendored runtime: exposes global `van` for the VanJS-based apps -->
+  <script src="vendor/van-1.6.1.nomodule.min.js"></script>
+  <!-- ES-module entrypoint: dependency order is resolved by the import graph -->
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

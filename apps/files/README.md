@@ -1,0 +1,5 @@
+# Files
+
+Finder-style manager for the user's Home, Documents, Downloads, Pictures, Trash, and mounted removable storage. `app.js` owns both the preview storage adapter and Files window. The native adapter uses scoped file methods for list, read, write, move, copy, and delete. Never resolve arbitrary native paths in JavaScript. See GUI-02 in `docs/GUI_APPS.md`.
+
+Finder-style manager with a unified window toolbar (`unified:true`): no centered title, with back/forward/up, breadcrumb, an icon view switcher (grid / list / columns / large icons), a sort dropdown (name / size / date / type + descending), new window, refresh, and search rendered into `win.tools`. The window also supports multiple tabs and multiple windows (`WM.open('files',{key,title})`). Files are managed from the right-click context menu (`openContextMenu`) only: items offer open, rename, and delete, while the folder background offers new folder, new file, refresh, and open in new window. Renaming is inline in the list/grid; create and delete go through the shared `dialog()` modal.

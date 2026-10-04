@@ -1,0 +1,38 @@
+# macOS and editor files
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Buildroot checkouts, downloads, and generated output (if kept in this repo)
+/buildroot/
+/bitos-build/
+/output/
+/dl/
+/downloads/
+/dist/
+
+# Generated OS and virtual machine artifacts
+*.img
+*.iso
+*.iso9660
+*.qcow2
+*.vmdk
+*.vdi
+*.fd
+*.log
+
+# Temporary files and language caches
+/tmp/
+__pycache__/
+*.py[cod]
+node_modules/
+.cache/

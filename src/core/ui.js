@@ -1,0 +1,75 @@
+'use strict';
+/* ============================================================================
+   BITOS WEB / UI PRIMITIVES
+   Notifications, clipboard, modal dialog, and shared widget wiring.
+   ========================================================================== */
+import { $, el, esc } from './dom.js';
+import { icon } from './icons.js';
+
+/* ================= toasts (macOS banners, top-right) ================= */
+export function toast(msg, kind = 'ok', action) {
+  if (document.body.classList.contains('no-toasts')) return;
+  const box = $('#toasts');
+  while (box.children.length > 4) box.firstChild.remove();
+  const ic = kind === 'ok' ? 'check' : kind === 'err' ? 'help' : kind === 'zap' ? 'bolt' : 'mag';
+  const t = el('div', 'toast ' + (kind || 'ok'),
+    `<span class="tico">${icon(ic, 13)}</span><span class="tm">${msg}</span>${action ? `<button class="ta">${action.label}</button>` : ''}<button class="tx" title="dismiss" aria-label="dismiss">${icon('close', 11)}</button>`);
+  const dismiss = () => { if (!t.isConnected) return; t.classList.add('out'); setTimeout(() => t.remove(), 220); };
+  if (action) t.querySelector('.ta').onclick = () => { action.fn(); dismiss(); };
+  t.querySelector('.tx').onclick = dismiss;
+  box.append(t); setTimeout(dismiss, action ? 6500 : 4200);
+}
+export function copyText(txt, msg) {
+  const done = () => toast(msg || 'copied to clipboard', 'ok');
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(done).catch(fb); } else fb();
+  function fb() {
+    const a = el('textarea'); a.value = txt; document.body.append(a); a.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('clipboard blocked by browser', 'err'); } a.remove();
+  }
+}
+
+/* ================= modal dialog =================
+   dialog({title, body, input, value, placeholder, ok, danger})
+   resolves the trimmed field value for prompts, true/false for confirms,
+   or null/false when cancelled. */
+export function dialog(o) {
+  o = o || {};
+  return new Promise(resolve => {
+    const box = el('div', 'modal');
+    box.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-t">${esc(o.title || '')}</div>
+      ${o.body ? `<div class="modal-b">${esc(o.body)}</div>` : ''}
+      ${o.input ? `<input class="modal-in" spellcheck="false" placeholder="${esc(o.placeholder || '')}" value="${esc(o.value || '')}">` : ''}
+      <div class="modal-act">
+        <button class="btn sm ghost" data-c>cancel</button>
+        <button class="btn sm ${o.danger ? 'danger' : 'pri'}" data-k>${esc(o.ok || 'ok')}</button>
+      </div></div>`;
+    const previousFocus = document.activeElement;
+    box.querySelector('[role="dialog"]').setAttribute('aria-label', o.title || 'Confirmation');
+    const field = box.querySelector('.modal-in'), okBtn = box.querySelector('[data-k]');
+    const done = v => { box.remove(); document.removeEventListener('keydown', key); if (previousFocus && previousFocus.isConnected) previousFocus.focus(); resolve(v); };
+    const accept = () => done(o.input ? (field ? field.value.trim() : '') : true);
+    const cancel = () => done(o.input ? null : false);
+    okBtn.onclick = accept;
+    box.querySelector('[data-c]').onclick = cancel;
+    box.addEventListener('pointerdown', e => { if (e.target === box) cancel(); });
+    if (o.input) { const sync = () => { okBtn.disabled = !field.value.trim(); }; field.addEventListener('input', sync); sync(); }
+    const key = e => {
+      if (e.key === 'Tab') {
+        const controls = [...box.querySelectorAll('input,button')].filter(x => !x.disabled);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      } else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (!o.input || document.activeElement === field) accept(); }
+    };
+    document.addEventListener('keydown', key);
+    document.body.append(box);
+    if (field) { field.focus(); field.select(); } else okBtn.focus();
+  });
+}
+
+export function wireComp(scope) {
+  scope.querySelectorAll('.sw2').forEach(t => { if (t.dataset.w) return; t.dataset.w = 1; t.onclick = () => t.classList.toggle('on'); });
+  scope.querySelectorAll('[data-copy]').forEach(b => { if (b.dataset.w) return; b.dataset.w = 1; b.onclick = () => copyText(b.dataset.copy); });
+}
