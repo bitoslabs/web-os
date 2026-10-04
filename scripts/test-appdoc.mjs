@@ -52,6 +52,9 @@ ok('package readable', eco.getPackage(digest).manifest.id === 'example-counter')
 const desc = { schema: 1, publisherKey: 'local', appId: pkg.manifest.id, version: pkg.manifest.version, name: pkg.manifest.name, entry: entry, permissions: pkg.manifest.permissions, packageDigest: digest };
 const rec = eco.install(desc, { source: 'local-file' });
 ok('install references package', rec && rec.packageDigest === digest);
+await eco.hydrateEcosystem();
+const idbState = await (await import('../src/core/idb.js')).idbReadState();
+ok('metadata migrates into the database', !!(idbState && idbState.installs[rec.key]));
 eco.uninstall(rec.key, { keepData: false });
 ok('unreferenced package dropped', eco.hasPackage(digest) === false);
 
@@ -68,6 +71,21 @@ ok('service installs and caches', rec2 && rec2.packageDigest === pv.digest && in
 ok('service list/get', installer.listInstalls().some(r => r.key === rec2.key) && !!installer.getInstall(rec2.key));
 installer.remove(rec2.key, { keepData: false });
 ok('service remove drops bytes', installer.hasPackage(pv.digest) === false);
+
+/* Update keeps rollback bytes; uninstall drops both digests. */
+const d1 = '11'.repeat(32), d2 = '22'.repeat(32);
+eco.putPackage(d1, pkg.files, pkg.manifest);
+const b1 = eco.install({ schema: 1, publisherKey: 'local', appId: 'notes', version: '1.0.0', name: 'Notes', permissions: [], packageDigest: d1 }, { source: 'local-file' });
+eco.putPackage(d2, pkg.files, pkg.manifest);
+eco.updateInstall(b1.key, { schema: 1, publisherKey: 'local', appId: 'notes', version: '2.0.0', name: 'Notes', permissions: [], packageDigest: d2 }, { source: 'local-file' });
+ok('update keeps both package versions', eco.hasPackage(d1) && eco.hasPackage(d2));
+eco.rollbackInstall(b1.key);
+ok('rollback restores the previous digest', eco.getInstall(b1.key).installedDigest === d1);
+const rels = eco.listReleases(b1.key);
+ok('release history records both versions', rels.length >= 2 && rels.some(r => r.version === '1.0.0') && rels.some(r => r.version === '2.0.0'));
+eco.uninstall(b1.key, { keepData: false });
+ok('uninstall drops current and rollback bytes', !eco.hasPackage(d1) && !eco.hasPackage(d2));
+ok('uninstall clears release history', eco.listReleases(b1.key).length === 0);
 
 rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${pass} passed, ${fail} failed`);

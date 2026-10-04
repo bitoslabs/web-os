@@ -27,11 +27,32 @@ package. Package import runs the v1 validator (`src/core/package.js`), caches
 the file set by digest, and the runtime inlines CSS/JS/assets into one
 sandboxed document (`src/core/appdoc.js`).
 
-Package bytes persist in IndexedDB (`src/core/idb.js`), hydrated at boot with a
-migration from the older localStorage records; install/grant/app-data metadata
-is still in localStorage. Not yet: signed release binding, catalog approval, and
-the full metadata database. Records without a runtime source show verified
-identity instead of running code. See
+Trust: Browse shows each listing's catalog state — approved, withdrawn,
+revoked, unapproved version, or unknown publisher. Only the exact approved
+`(publisherKey, appId, version, digest)` tuple installs from the catalog
+(`curatedDecision`/`installCurated`); a changed version or digest is refused.
+Local files and packages are explicit unverified actions. The snapshot is
+signed with Ed25519 and verified via WebCrypto (`src/core/catalog-sign.js`,
+`src/data/catalog-signature.js`); an invalid snapshot blocks curated installs.
+The accepted snapshot and listings cache in IndexedDB (`src/core/catalog-store.js`)
+so the Store renders immediately (and offline) before re-verifying. Per-release
+publisher trust is still open.
+
+Release signing: a package may carry an Ed25519 `release` envelope
+(`make sign-release FILE=…`). The installer verifies it before activation and
+the Installed detail shows **release signed**, or **trusted publisher** when the
+signer is listed in `src/data/trusted-keys.js`. Passing `trustedKeys` to the
+installer makes an unlisted signer a hard refusal. The map is curated for now;
+it is built from Nostr identities later.
+
+Package bytes and install/grant/app-data metadata persist in IndexedDB
+(`src/core/idb.js`), hydrated at boot with a migration from the older
+localStorage records (which stay as a mirror). An interrupted install/update recovers to the previous version (or shows a
+`broken` state that stays removable). Every installed `(version, digest)` is
+recorded in the IndexedDB `releases` store and shown as version history on the
+Installed detail. Not yet: signed release binding, catalog
+approval, and verifying staged bytes against a signed release. Records without a
+runtime source show verified identity instead of running code. See
 [app ecosystem tasks](../../docs/APP_ECOSYSTEM_TASKS.md) for the remaining work
 (APP-03, APP-06, APP-12–15).
 

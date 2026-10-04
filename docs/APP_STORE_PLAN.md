@@ -1,6 +1,6 @@
 # App Store and Nostr app submissions
 
-Status: architecture plan. A preview Store, app-management layer, package format v1 (`src/core/package.js`, `scripts/pack.mjs`), and a sandboxed runtime that inlines validated packages (`src/core/appdoc.js`, `src/shell/app-frame.js`) exist. Signed release binding, catalog approval, IndexedDB storage, and live Nostr publishing are not implemented.
+Status: architecture plan. A preview Store, app-management layer, package format v1 (`src/core/package.js`, `scripts/pack.mjs`), and a sandboxed runtime that inlines validated packages (`src/core/appdoc.js`, `src/shell/app-frame.js`) exist. The catalog snapshot is Ed25519-signed and verified (exact-tuple approval); signed per-release binding, IndexedDB catalog/listings stores, and live Nostr publishing are not implemented.
 
 For a developer-facing walkthrough and sample app, see the [developer guide](APP_DEVELOPER_GUIDE.md) and [installable app template](../templates/installable-app/README.md). The [ecosystem data model](ECOSYSTEM_DATA_MODEL.md) defines identities, release records, catalog decisions, and local storage.
 The [implementation tasks](APP_ECOSYSTEM_TASKS.md) track current feature gaps and acceptance checks.

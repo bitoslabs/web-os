@@ -39,6 +39,13 @@ function sortValue(v) {
 }
 export function canonicalJson(value) { return JSON.stringify(sortValue(value)); }
 
+/* The signed payload excludes the release envelope, so a publisher can sign a
+ * digest and then attach `release` without changing that digest. */
+export function canonicalPayload(pkg) {
+  return canonicalJson({ format: pkg && pkg.format, version: pkg && pkg.version, manifest: pkg && pkg.manifest, files: pkg && pkg.files });
+}
+export function payloadDigest(pkg) { return sha256Hex(utf8Bytes(canonicalPayload(pkg))); }
+
 /* ================= hashing ================= */
 const enc = new TextEncoder();
 export function utf8Bytes(text) { return enc.encode(text); }
@@ -99,7 +106,7 @@ export async function validatePackage(pkg, opts) {
   const add = (code, message, path) => errors.push({ code, message, path });
   const finish = async () => {
     if (errors.length) return { ok: false, errors };
-    const digest = await sha256Hex(utf8Bytes(canonicalJson(pkg)));
+    const digest = await payloadDigest(pkg);
     return { ok: true, errors: [], manifest: pkg.manifest, digest };
   };
   if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) { add('E_FORMAT', 'package must be an object'); return { ok: false, errors }; }

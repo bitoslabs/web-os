@@ -45,15 +45,21 @@ os-web/
       system.js       live/simulated system info and boot state
       registry.js     APPS + registerApp()
       ecosystem.js    installs, grants, app data, package index
-      idb.js          IndexedDB package-byte store
+      idb.js          IndexedDB stores (packages, installs, grants, data, releases)
       package.js      package-format v1 validation and hashing
       appdoc.js       inline a package's files into one document
-      installer.js    preview/install/list/get/remove service
+      installer.js    preview/install/list/get/remove + curated approval
+      catalog-sign.js Ed25519 catalog snapshot signature verification
+      release-sign.js  Ed25519 release manifest signing/verification
+      catalog-store.js catalog snapshot/listings IndexedDB cache
       index.js        barrel re-export of the core
     data/             content and simulation, separated from programs
       handbook.js     HBDATA design-system sections
       sim.js          SIM nostr relay/event simulation
       sample-files.js SAMPLE_FILES preview filesystem content
+      store-catalog.js  curated catalog snapshot + entries
+      catalog-signature.js  generated snapshot public key + signature
+      trusted-keys.js   publisher identity -> trusted Ed25519 signer keys
     shell/            desktop-wide behavior
       state.js        shared shell bindings (desk element, session start)
       launchers.js    pinned dock/desktop catalog
@@ -81,6 +87,11 @@ os-web/
   scripts/check.mjs   structural check (syntax + import resolution)
   scripts/pack.mjs    build a .bitos-app from a folder
   scripts/test-package.mjs  package-format fixtures
+  scripts/test-appdoc.mjs   package document + metadata fixtures
+  scripts/test-catalog.mjs  catalog approval + signature fixtures
+  scripts/test-release.mjs  release-signature fixtures
+  scripts/sign-catalog.mjs  re-sign the catalog snapshot
+  scripts/sign-release.mjs  sign a packaged release
   docs/               upstream reference docs
 ```
 

@@ -8,12 +8,15 @@ import {
   listInstalls, install, updateInstall, rollbackInstall, uninstall,
   grantsOf, setGrant, isGranted, dataUsage, clearAppData,
   isNewer, validateDescriptor, appKey, systemKey, isSystemKey,
-  PERMISSION_LABELS, onEcosystemChange, hasPackage,
+  PERMISSION_LABELS, onEcosystemChange, hasPackage, verifyCatalog, listReleases,
+  readCatalogCache, cacheCatalogSnapshot,
 } from '../../src/core/index.js';
-import { preview as previewSource, install as installSource } from '../../src/core/installer.js';
+import { preview as previewSource, install as installSource, curatedDecision, installCurated } from '../../src/core/installer.js';
 import { WM } from '../../src/shell/window-manager.js';
 import { openInstalled } from '../../src/shell/installed-apps.js';
-import { CATALOG } from '../../src/data/store-catalog.js';
+import { CATALOG, CATALOG_SNAPSHOT, CATALOG_META } from '../../src/data/store-catalog.js';
+import { CATALOG_SIGNER } from '../../src/data/catalog-signature.js';
+import { isTrustedSigner } from '../../src/data/trusted-keys.js';
 
 const SYS_VERSION = 'built-in';
 
@@ -29,8 +32,16 @@ function systemInstall(appId) {
 function installFor(entry) { return listInstalls().find(r => r.key === appKey(entry.publisherKey, entry.appId)) || null; }
 
 function pendingUpdate(rec) {
-  if (!rec || rec.system || isSystemKey(rec.key)) return null;
+  if (!rec || rec.system || isSystemKey(rec.key) || rec.state !== 'ready') return null;
   return CATALOG.find(e => appKey(e.publisherKey, e.appId) === rec.key && isNewer(e.version, rec.installedVersion)) || null;
+}
+
+function recTrust(rec) {
+  const found = CATALOG.find(e => appKey(e.publisherKey, e.appId) === rec.key);
+  const status = (found && found.catalog && found.catalog.status) || 'approved';
+  if (found && status === 'approved' && (found.digest || '') === (rec.installedDigest || '')) return { label: 'catalog approved', ok: true };
+  if (rec.source === 'local-file') return { label: 'local — unverified', ok: false };
+  return { label: 'unverified', ok: false };
 }
 
 function atLeast(entry) { return (entry.minBitosApi || 1) <= 1; }
@@ -60,6 +71,20 @@ registerApp('store', {
     let sel = null;
     let q = '';
     let busy = false;
+    let catalogStatus = { status: 'checking', reason: '' };
+    let catalogCachedAt = 0;
+    const catalogBlocked = () => catalogStatus.status === 'invalid';
+    function paintCatalog() {
+      const el = body.querySelector('[data-catstatus]'); if (!el) return;
+      const s = catalogStatus;
+      const cached = catalogCachedAt ? ' (cached)' : '';
+      el.textContent = (s.status === 'verified' ? 'snapshot signature verified'
+        : s.status === 'invalid' ? 'snapshot signature INVALID — curated installs blocked'
+        : s.status === 'unsupported' ? 'signature check unavailable here — unverified'
+        : s.status === 'checking' ? 'checking snapshot signature…'
+        : 'snapshot signature missing — unverified') + cached;
+      el.classList.toggle('c-err', s.status === 'invalid');
+    }
 
     const isRunnable = x => !!(x && (x.entryUrl || x.content || (x.packageDigest && hasPackage(x.packageDigest))));
     /* Run a one-at-a-time action with a disabled, relabelled button. */
@@ -86,7 +111,7 @@ registerApp('store', {
         <div class="store-list" data-list role="listbox" aria-label="apps"></div>
         <button class="btn sm ghost store-import" data-import>${icon('doc', 13)} install from file…</button>
         <input type="file" accept=".json,.bitos-app,application/json" hidden data-file>
-        <div class="store-foot">catalog snapshot · ${esc(CATALOG.length)} approved apps</div>
+        <div class="store-foot">${esc(CATALOG_SNAPSHOT)}<br>${CATALOG.length} listings · exact-tuple approval<br><span data-catstatus>checking snapshot signature…</span></div>
       </aside>
       <section class="store-detail" data-detail></section>
     </div>`;
@@ -106,8 +131,11 @@ registerApp('store', {
     }
 
     const sysList = () => Object.keys(APPS).map(systemInstall);
-    const instList = () => listInstalls().filter(r => r.state === 'ready');
-    const updateList = () => instList().map(r => ({ rec: r, entry: pendingUpdate(r) })).filter(x => x.entry);
+    /* Include broken/staged records so an interrupted app stays removable. */
+    const instList = () => listInstalls().filter(r => !isSystemKey(r.key));
+    const updateList = () => instList()
+      .map(r => ({ rec: r, entry: pendingUpdate(r) }))
+      .filter(x => x.entry && curatedDecision(x.entry, CATALOG).approved && !catalogBlocked());
 
     function items() {
       if (view === 'installed') return [...sysList(), ...instList()];
@@ -142,6 +170,7 @@ registerApp('store', {
         return '<span class="st-badge">' + esc(it.version) + '</span>';
       }
       if (view === 'updates') return '<span class="st-badge upd">' + esc(it.version) + '</span>';
+      if (it.state && it.state !== 'ready') return '<span class="st-badge er">' + esc(it.state) + '</span>';
       const up = pendingUpdate(it);
       return up ? '<span class="st-badge upd">update</span>' : '<span class="st-badge">' + esc(it.installedVersion) + '</span>';
     }
@@ -195,15 +224,27 @@ registerApp('store', {
 
     function badges(it, rec) {
       const out = [];
+      if (it.state && it.state !== 'ready') out.push('<span class="st-chip warn">' + esc(it.state) + '</span>');
       if (it.system) out.push('<span class="st-chip">shipped with bitos</span>');
       else {
-        out.push(`<span class="st-chip${it.catalog ? '' : ' dim'}">${it.catalog && it.catalog.status === 'approved' ? 'catalog approved' : 'unverified source'}</span>`);
+        if (it.catalog) {
+          const d = curatedDecision(it, CATALOG);
+          const label = d.approved ? 'catalog approved' : d.status === 'unapproved' ? 'unapproved version' : 'catalog ' + d.status;
+          out.push(`<span class="st-chip${d.approved ? '' : ' warn'}">${esc(label)}</span>`);
+        } else {
+          const t = recTrust(it);
+          out.push(`<span class="st-chip${t.ok ? '' : ' dim'}">${esc(t.label)}</span>`);
+        }
         out.push(`<span class="st-chip${atLeast(it) ? '' : ' warn'}">api ${esc(it.minBitosApi || 1)}</span>`);
         out.push(`<span class="st-chip dim">${esc((it.permissions || []).length)} permission${(it.permissions || []).length === 1 ? '' : 's'}</span>`);
         const runnable = isRunnable(it) || isRunnable(rec);
         const hasBytes = !!((rec && rec.packageDigest && hasPackage(rec.packageDigest)) || (it.packageDigest && hasPackage(it.packageDigest)));
         out.push(`<span class="st-chip${runnable ? '' : ' dim'}">${runnable ? 'runs sandboxed' : 'metadata only'}</span>`);
         if (hasBytes) out.push('<span class="st-chip">package bytes verified</span>');
+        if ((rec && rec.releaseVerified) || it.releaseVerified) {
+          const trusted = (rec && rec.releaseTrusted) || (rec && isTrustedSigner(rec.publisherKey, rec.releaseKey));
+          out.push(`<span class="st-chip${trusted ? '' : ' dim'}">${trusted ? 'trusted publisher' : 'release signed'}</span>`);
+        }
       }
       if (rec && rec.previousVersion) out.push('<span class="st-chip dim">rollback available</span>');
       return `<div class="st-chips">${out.join('')}</div>`;
@@ -235,18 +276,31 @@ registerApp('store', {
       });
     }
 
+    function releaseHistory(key) {
+      const rels = listReleases(key);
+      if (!rels.length) return '<div class="st-note">no recorded releases.</div>';
+      return rels.map(r => `<div class="st-kv"><span>${esc(r.version)}${r.digest ? ' · ' + esc(r.digest.slice(0, 8)) : ''} · ${esc(r.source)}</span><b class="mono-dim">${esc(new Date(r.at).toISOString().slice(0, 10))}</b></div>`).join('');
+    }
+
     function renderBrowseDetail(it) {
       const rec = installFor(it);
       const upd = rec ? pendingUpdate(rec) : null;
       const actions = [];
-      if (rec) {
+      if (rec && rec.state !== 'ready') {
+        actions.push(`<span class="st-note">installs as ${esc(rec.state)} — not launchable.</span>`);
+        if (rec.previousVersion) actions.push(`<button class="btn sm ghost" data-rollback>roll back to ${esc(rec.previousVersion)}</button>`);
+        actions.push('<button class="btn sm danger" data-uninstall>uninstall</button>');
+      } else if (rec) {
         if (upd) actions.push(`<button class="btn sm pri" data-update>update to ${esc(upd.version)}</button>`);
         actions.push(`<button class="btn sm${upd ? '' : ' pri'}" data-open>open</button>`);
         if (rec.previousVersion) actions.push(`<button class="btn sm ghost" data-rollback>roll back to ${esc(rec.previousVersion)}</button>`);
         actions.push('<button class="btn sm danger" data-uninstall>uninstall</button>');
       } else {
-        actions.push(`<button class="btn sm pri" data-install${atLeast(it) ? '' : ' disabled'}>install</button>`);
-        if (!isRunnable(it)) actions.push('<span class="st-note">no runnable package — installs as managed metadata.</span>');
+        const d = curatedDecision(it, CATALOG);
+        actions.push(`<button class="btn sm pri" data-install${(atLeast(it) && d.approved && !catalogBlocked()) ? '' : ' disabled'}>install</button>`);
+        if (catalogBlocked()) actions.push('<span class="st-note">catalog snapshot failed verification — installs blocked.</span>');
+        else if (!d.approved) actions.push(`<span class="st-note">not installable — ${esc(d.reason || d.status)}.</span>`);
+        else if (!isRunnable(it)) actions.push('<span class="st-note">no runnable package — installs as managed metadata.</span>');
       }
       detailEl.innerHTML = `${hero(it, it.version)}${badges(it, rec)}
         <p class="st-summary">${esc(it.summary || '')}</p>
@@ -271,6 +325,18 @@ registerApp('store', {
         detailEl.querySelector('[data-open]').onclick = () => openApp(rec);
         return;
       }
+      if (rec.state !== 'ready') {
+        detailEl.innerHTML = `${hero(rec, rec.installedVersion || rec.version)}${badges(rec, rec)}
+          <div class="st-banner">${icon('help', 14)} this install is <b>${esc(rec.state)}</b> and will not launch.${rec.previousVersion ? ' roll back to the previous version, or remove it.' : ' remove it and reinstall from the Store.'}</div>
+          ${publisherBox(rec, rec)}
+          <div class="u-row u-gap-8 st-actions">
+            ${rec.previousVersion ? `<button class="btn sm" data-rollback>roll back to ${esc(rec.previousVersion)}</button>` : ''}
+            <button class="btn sm danger" data-uninstall>uninstall</button>
+          </div>`;
+        const rb = detailEl.querySelector('[data-rollback]'); if (rb) rb.onclick = () => doRollback(rec, rb);
+        const ub = detailEl.querySelector('[data-uninstall]'); if (ub) ub.onclick = () => doUninstall(rec, ub);
+        return;
+      }
       const upd = pendingUpdate(rec);
       const newPerms = upd ? (upd.permissions || []).filter(p => !(rec.permissions || []).includes(p)) : [];
       const running = [...WM.wins.values()].filter(w => w.key === rec.key || w.id === rec.key).length;
@@ -291,6 +357,7 @@ registerApp('store', {
           <div class="st-kv"><span>private namespace</span><b class="mono-dim">${dataUsage(rec.key)} / 65536 bytes</b></div>
           <div class="u-row u-gap-8 st-actions"><button class="btn sm ghost" data-clear-data>clear app data</button></div>
         </div>
+        <div class="grpbox"><span class="lbl">version history</span>${releaseHistory(rec.key)}</div>
         <div class="u-row u-gap-8 st-actions">${actions}</div>`;
       wirePerms(rec);
       detailEl.querySelector('[data-open]').onclick = () => openApp(rec);
@@ -317,13 +384,16 @@ registerApp('store', {
     /* ---------- actions ---------- */
     function doInstall(entry, btn) {
       return run(btn, 'installing…', async () => {
+        if (catalogBlocked()) { toast('catalog snapshot failed verification — installs are blocked', 'err'); return; }
+        const decision = curatedDecision(entry, CATALOG);
+        if (!decision.approved) { toast('not installable — ' + esc(decision.reason || decision.status), 'err'); return; }
         const perms = entry.permissions || [];
-        const body = 'version ' + entry.version + ' from ' + (entry.publisherKey === 'local' ? 'a local file' : entry.publisherKey.slice(0, 12) + '…') +
+        const body = 'version ' + entry.version + ' · approved tuple ' + (entry.digest || '').slice(0, 16) + '…' +
           (perms.length ? '. Requests: ' + perms.join(', ') + '. New permissions start denied.' : '. No permissions requested.');
         const ok = await dialog({ title: 'install ' + entry.name + '?', body, ok: 'install' });
         if (!ok) return;
         let r;
-        try { r = install(entry, { source: entry.publisherKey === 'local' ? 'local-file' : 'catalog' }); }
+        try { r = installCurated(entry, CATALOG, { source: 'catalog' }); }
         catch (e) { toast('install failed — ' + esc(e.message || e), 'err'); return; }
         if (r) { sel = r.key; refresh(); }
         toast('<b>' + esc(entry.name) + '</b> installed', 'ok', { label: 'open', fn: () => r && openApp(r) });
@@ -476,6 +546,15 @@ registerApp('store', {
     const unsub = onEcosystemChange(() => { if (body.isConnected) refresh(); });
 
     refresh();
+    /* Show the cached snapshot immediately, then re-verify the live one. */
+    readCatalogCache().then(c => {
+      if (c && c.verification && body.isConnected) { catalogStatus = c.verification; catalogCachedAt = c.at; paintCatalog(); }
+    }).catch(() => { });
+    verifyCatalog(CATALOG, CATALOG_META, CATALOG_SIGNER).then(s => {
+      catalogStatus = s; catalogCachedAt = 0; paintCatalog();
+      cacheCatalogSnapshot(CATALOG, CATALOG_META, s).catch(() => { });
+      if (body.isConnected) refresh();
+    }).catch(() => { catalogStatus = { status: 'unsupported', reason: 'verification failed' }; paintCatalog(); });
     return unsub;
   },
 });

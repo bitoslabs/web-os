@@ -54,8 +54,16 @@ browser and in Node without dependencies.
 - **File digest** is `sha256-` followed by the 64-character lowercase hex
   SHA-256 of the decoded file bytes. Manifest entries use this prefix.
 - **Package digest** is the 64-character lowercase hex SHA-256 of the canonical
-  container bytes, stored without a prefix. It is the version's identity; a
-  changed byte needs a new version.
+  **payload** — `{ format, version, manifest, files }` — stored without a
+  prefix. Top-level envelope keys (such as `release`) are excluded, so a
+  package can be signed after packing without changing its digest. It is the
+  version's identity; a changed byte needs a new version.
+- **Release envelope** (optional) is `release: { publisherKey, publicKey, signature }`.
+  `publicKey` and `signature` are base64 Ed25519 values; the signed message is
+  the canonical `{ schema, publisherKey, appId, version, digest, permissions, minBitosApi }`
+  release manifest. The installer verifies it before activation. This proves
+  integrity against the embedded signer; mapping publishers to trusted keys is
+  the Nostr layer (APP-13/14).
 
 ## Identity
 

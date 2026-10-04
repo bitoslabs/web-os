@@ -8,7 +8,7 @@
    registry and are treated as system-managed.
    ========================================================================== */
 import { toast } from './ui.js';
-import { idbPut, idbDel, idbAll } from './idb.js';
+import { idbPut, idbDel, idbAll, idbReadState, idbWriteState, idbPutIn, idbAllIn, idbDelIn } from './idb.js';
 
 export const ECOSYSTEM_KEY = 'bitos.apps.v1';
 export const ECOSYSTEM_SCHEMA = 1;
@@ -35,6 +35,8 @@ function safeEntryUrl(v) { return ENTRY_RE.test(v) || HTTPS_RE.test(v); }
 
 const listeners = new Set();
 let db = null;
+let hydrated = false;   /* metadata loaded from IndexedDB */
+let writing = null;     /* serializes IndexedDB writes */
 
 function blank() { return { schema: ECOSYSTEM_SCHEMA, installs: {}, grants: {}, data: {}, packages: {} }; }
 
@@ -57,8 +59,16 @@ function read() {
 function ensure() { if (!db) db = read(); return db; }
 
 function persist() {
-  try { localStorage.setItem(ECOSYSTEM_KEY, JSON.stringify(db)); return true; }
-  catch (e) { toast('could not save app state — storage is full or blocked', 'err'); return false; }
+  let ok = true;
+  try { localStorage.setItem(ECOSYSTEM_KEY, JSON.stringify(db)); }
+  catch (e) { toast('could not save app state — storage is full or blocked', 'err'); ok = false; }
+  /* Once hydrated, IndexedDB is authoritative; localStorage is a mirror. */
+  if (hydrated) {
+    writing = (writing || Promise.resolve())
+      .then(() => idbWriteState({ installs: db.installs, grants: db.grants, data: db.data }))
+      .catch(() => toast('could not persist app state to the local database', 'err'));
+  }
+  return ok;
 }
 
 function emit(change) { listeners.forEach(fn => { try { fn(change); } catch (e) { } }); }
@@ -123,16 +133,21 @@ export function getInstall(key) {
 }
 export function findInstall(publisherKey, appId) { return getInstall(appKey(publisherKey, appId)); }
 
+/* The package digest doubles as the installed digest; a descriptor may carry it
+ * as `packageDigest` (validated package) or `digest` (catalog tuple). */
+function digestOf(desc) { return desc.packageDigest || desc.digest || ''; }
+
 function recordFrom(desc, opts, now) {
   const publisherKey = desc.publisherKey == null ? 'local' : String(desc.publisherKey);
+  const dg = digestOf(desc);
   return {
     publisherKey, appId: desc.appId, name: String(desc.name),
     summary: desc.summary || '', icon: desc.icon || 'grid', entry: desc.entry || 'index.html',
-    version: desc.version, installedVersion: desc.version, installedDigest: desc.digest || '',
+    version: desc.version, installedVersion: desc.version, installedDigest: dg,
     previousVersion: null, previousDigest: null,
     permissions: [...(desc.permissions || [])], minBitosApi: desc.minBitosApi || 1,
     packageUrl: desc.packageUrl || '', entryUrl: desc.entryUrl || '', content: desc.content || '',
-    packageDigest: desc.packageDigest || '',
+    packageDigest: dg, releaseVerified: !!desc.releaseVerified, releaseTrusted: !!desc.releaseTrusted, releaseKey: desc.releaseKey || '',
     source: opts.source || 'catalog',
     state: 'installing', installedAt: now, updatedAt: now,
     validation: { ok: true, at: now },
@@ -164,7 +179,9 @@ export function install(desc, opts) {
   rec.state = 'ready'; rec.updatedAt = Date.now();
   if (!persist()) { rec.state = 'installing'; return null; }
   emit({ type: 'ready', key });
-  return getInstall(key);
+  const done = getInstall(key);
+  recordRelease(done);
+  return done;
 }
 
 export function updateInstall(key, desc, opts) {
@@ -179,10 +196,13 @@ export function updateInstall(key, desc, opts) {
   const d = ensure();
   const now = Date.now();
   const rec = d.installs[key];
+  /* Stage: snapshot so a failed write restores the working version. */
+  const before = { rec: JSON.parse(JSON.stringify(rec)), grants: JSON.parse(JSON.stringify(d.grants[key] || {})) };
   rec.previousVersion = existing.installedVersion;
   rec.previousDigest = existing.installedDigest;
   rec.installedVersion = desc.version;
-  rec.installedDigest = desc.digest || existing.installedDigest;
+  rec.installedDigest = digestOf(desc) || existing.installedDigest;
+  rec.packageDigest = rec.installedDigest;
   rec.name = String(desc.name);
   rec.summary = desc.summary || rec.summary;
   rec.icon = desc.icon || rec.icon;
@@ -190,7 +210,7 @@ export function updateInstall(key, desc, opts) {
   rec.packageUrl = desc.packageUrl || rec.packageUrl;
   rec.entryUrl = desc.entryUrl || rec.entryUrl;
   rec.content = desc.content || rec.content;
-  rec.packageDigest = desc.packageDigest || rec.packageDigest;
+  if (desc.releaseVerified != null) { rec.releaseVerified = !!desc.releaseVerified; rec.releaseTrusted = !!desc.releaseTrusted; rec.releaseKey = desc.releaseKey || ''; }
   rec.permissions = [...new Set([...(existing.permissions || []), ...(desc.permissions || [])])];
   rec.minBitosApi = desc.minBitosApi || rec.minBitosApi;
   rec.source = (opts && opts.source) || rec.source;
@@ -198,10 +218,13 @@ export function updateInstall(key, desc, opts) {
   /* Newly requested permissions start denied; existing grants are preserved. */
   const g = d.grants[key] || (d.grants[key] = {});
   rec.permissions.forEach(p => { if (!g[p]) g[p] = { granted: false, at: now }; });
-  persist(); emit({ type: 'updating', key });
+  if (!persist()) { d.installs[key] = before.rec; d.grants[key] = before.grants; throw new Error('could not stage the update'); }
+  emit({ type: 'updating', key });
   rec.state = 'ready'; rec.updatedAt = Date.now();
   persist(); emit({ type: 'ready', key });
-  return getInstall(key);
+  const done = getInstall(key);
+  recordRelease(done);
+  return done;
 }
 
 export function rollbackInstall(key) {
@@ -211,9 +234,12 @@ export function rollbackInstall(key) {
   const v = rec.installedVersion, dg = rec.installedDigest;
   rec.installedVersion = rec.previousVersion; rec.installedDigest = rec.previousDigest;
   rec.previousVersion = v; rec.previousDigest = dg;
+  rec.packageDigest = rec.installedDigest;
   rec.state = 'ready'; rec.updatedAt = now;
   persist(); emit({ type: 'rollback', key });
-  return getInstall(key);
+  const done = getInstall(key);
+  recordRelease(done);
+  return done;
 }
 
 export function uninstall(key, opts) {
@@ -221,12 +247,15 @@ export function uninstall(key, opts) {
   if (isSystemKey(key)) throw new Error('built-in apps are system managed');
   const d = ensure();
   if (!d.installs[key]) throw new Error('not installed');
-  const digest = d.installs[key].packageDigest;
+  const rec = d.installs[key];
+  const digests = [...new Set([rec.packageDigest, rec.previousDigest].filter(Boolean))];
   delete d.installs[key];
   delete d.grants[key];
   if (!opts.keepData) delete d.data[key];
-  /* Drop cached package bytes only when no other install references them. */
-  if (digest) removePackage(digest);
+  /* Drop current and rollback bytes only when no other install references them. */
+  digests.forEach(dg => removePackage(dg));
+  (releaseIndex.get(key) || []).forEach(r => idbDelIn('releases', releaseId(key, r.version, r.digest)).catch(() => { }));
+  releaseIndex.delete(key);
   persist(); emit({ type: 'uninstall', key });
 }
 
@@ -303,6 +332,63 @@ export function removePackage(digest) {
 }
 export function listPackages() { return [...packageIndex]; }
 
+/* Load install/grant/app-data metadata from IndexedDB. Migrates the older
+ * localStorage record on first run, then treats IndexedDB as authoritative.
+ * Call after hydratePackages() and before the desktop starts. */
+export async function hydrateEcosystem() {
+  const local = ensure();
+  let state = null;
+  try { state = await idbReadState(); } catch (e) { return false; }
+  const empty = !state || (!Object.keys(state.installs || {}).length && !Object.keys(state.grants || {}).length && !Object.keys(state.data || {}).length);
+  const localHas = !!(local && (Object.keys(local.installs || {}).length || Object.keys(local.grants || {}).length || Object.keys(local.data || {}).length));
+  if (empty && localHas) {
+    state = { installs: local.installs || {}, grants: local.grants || {}, data: local.data || {} };
+    try { await idbWriteState(state); } catch (e) { }
+  }
+  db = {
+    schema: ECOSYSTEM_SCHEMA,
+    installs: (state && state.installs) || {},
+    grants: (state && state.grants) || {},
+    data: (state && state.data) || {},
+    packages: {},
+  };
+  hydrated = true;
+  recoverInterrupted();
+  try {
+    for (const [, rel] of await idbAllIn('releases')) {
+      if (!rel || !rel.key) continue;
+      const list = releaseIndex.get(rel.key) || [];
+      if (!list.some(r => r.version === rel.version && r.digest === rel.digest)) list.push(rel);
+      releaseIndex.set(rel.key, list);
+    }
+  } catch (e) { }
+  for (const rec of Object.values(db.installs)) if (rec.state === 'ready') recordRelease(rec);
+  return true;
+}
+
+/* A write interrupted mid-install/update leaves a non-ready record. Restore the
+ * previous version when one exists, else mark the app broken. Only ready
+ * installs launch, so recovery never exposes partially verified code. */
+function recoverInterrupted() {
+  const d = ensure();
+  let changed = false;
+  for (const rec of Object.values(d.installs)) {
+    if (!rec || rec.state === 'ready') continue;
+    if (rec.previousVersion != null) {
+      const v = rec.installedVersion, dg = rec.installedDigest;
+      rec.installedVersion = rec.previousVersion; rec.installedDigest = rec.previousDigest;
+      rec.previousVersion = v; rec.previousDigest = dg;
+      rec.packageDigest = rec.installedDigest;
+      rec.state = 'ready';
+    } else {
+      rec.state = 'broken';
+    }
+    rec.updatedAt = Date.now();
+    changed = true;
+  }
+  if (changed) persist();
+}
+
 /* Load persisted packages into memory. Call once before the desktop starts;
  * migrates any packages left in the older localStorage record. */
 export async function hydratePackages() {
@@ -324,6 +410,28 @@ export async function hydratePackages() {
   } catch (e) { /* IndexedDB blocked: keep the in-memory mirror only */ }
   if (migrated) persist();
 }
+
+/* ================= release history =================
+   One record per installed (version, digest), persisted in the `releases`
+   store so the Store can show version history and a rollback target. */
+const releaseIndex = new Map();
+
+function releaseId(key, version, digest) { return key + '@' + version + '#' + String(digest || '').slice(0, 16); }
+
+function recordRelease(rec) {
+  if (!rec || isSystemKey(rec.key) || !rec.installedVersion) return;
+  const rel = {
+    key: rec.key, version: rec.installedVersion, digest: rec.installedDigest || '',
+    source: rec.source || 'catalog', permissions: [...(rec.permissions || [])], at: Date.now(),
+  };
+  const list = releaseIndex.get(rec.key) || [];
+  if (list.some(r => r.version === rel.version && r.digest === rel.digest)) return;
+  list.push(rel);
+  releaseIndex.set(rec.key, list);
+  idbPutIn('releases', releaseId(rec.key, rel.version, rel.digest), rel).catch(() => { });
+}
+
+export function listReleases(key) { return (releaseIndex.get(key) || []).slice().sort((a, b) => b.at - a.at); }
 
 /* ================= diagnostics ================= */
 export function ecosystemSnapshot() { return JSON.parse(JSON.stringify(ensure())); }

@@ -14,3 +14,5 @@ export * from './registry.js';
 export * from './ecosystem.js';
 export * from './package.js';
 export * from './appdoc.js';
+export * from './catalog-sign.js';
+export * from './catalog-store.js';

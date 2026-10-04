@@ -18,7 +18,7 @@ Built-in apps share shell code and can use internal modules. Installable apps ar
 3. Build the interface with local HTML, CSS, JS, and assets. Use relative paths. Avoid CDN scripts, remote fonts, external imports, and inline event handlers. The initial package policy aims for offline operation.
 4. Run `make serve` from the repo root and open `http://127.0.0.1:8000/templates/installable-app/` to preview the untouched starter. For a copied folder, serve and open that folder instead.
 5. Check keyboard access, readable contrast, narrow window layout, startup without network, and clean behavior after reload. Test errors and empty states for real apps.
-6. Build the package with `make pack SRC=<app-folder>` (or `node scripts/pack.mjs <app-folder>`). The tool reads `app.json`, hashes every listed file, writes `<id>-<version>.bitos-app`, and validates the result before writing. The placeholder digests in the starter are replaced automatically. Validate fixtures with `make check-package`.
+6. Build the package with `make pack SRC=<app-folder>` (or `node scripts/pack.mjs <app-folder>`). The tool reads `app.json`, hashes every listed file, writes `<id>-<version>.bitos-app`, and validates the result before writing. The placeholder digests in the starter are replaced automatically. Optionally sign it with `make sign-release FILE=<id>-<version>.bitos-app`, which embeds an Ed25519 `release` envelope without changing the payload digest. Validate fixtures with `make check-package`.
 
 The [package format](PACKAGE_FORMAT.md) is frozen for v1 (canonical JSON container, SHA-256 per file and per package). Publishing still needs signed release and listing events (APP-13/14).
 

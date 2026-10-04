@@ -971,6 +971,7 @@ body.reduce-motion *{animation:none!important;transition:none!important}
 .st-badge.ok{background:var(--acc-t2);color:var(--acc2)}
 .st-badge.upd{background:rgba(88,194,108,.18);color:var(--ok)}
 .st-badge.sys{background:rgba(var(--ov),.06);color:var(--ink3)}
+.st-badge.er{background:rgba(229,72,77,.16);color:var(--err)}
 .store-import{margin:8px 10px 4px;justify-content:center}
 .store-updateall{margin:0 10px 8px;justify-content:center}
 .store-item:focus-visible{outline:2px solid var(--acc2);outline-offset:-2px;border-radius:8px}

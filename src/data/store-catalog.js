@@ -9,6 +9,7 @@ import { appKey } from '../core/ecosystem.js';
 
 export const CATALOG_SNAPSHOT = 'bitos-catalog-2026-10-04';
 export const REVIEWED_AT = '2026-10-04T00:00:00Z';
+export const CATALOG_META = Object.freeze({ snapshot: CATALOG_SNAPSHOT, publishedAt: REVIEWED_AT });
 
 const P1 = 'f2e240b54df3d0fe3ff9e6c520a54b2d260a63b5eb94e227217276ab1a6c67e6';
 const P2 = '6ab7e699a3d2f301334ae60bb4c7355ae5a77d5addc7aa92fec7c3755a896fb6';
@@ -50,6 +51,7 @@ export const CATALOG = Object.freeze([
     permissions: ['app.window'],
     digest: '523f1ff42e2f304f4d6422b07ddb59a40e97af12b6e6a470e880014f53278c0e',
     packageUrl: 'https://apps.bitos.dev/releases/focus-timer-1.4.2.bitos-app',
+    catalog: { status: 'withdrawn', reviewedAt: REVIEWED_AT, snapshot: CATALOG_SNAPSHOT, reason: 'author withdrew this build' },
   }),
   entry({
     publisherKey: P4, appId: 'weather', name: 'Weather', version: '3.0.1', icon: 'pic',
@@ -57,6 +59,7 @@ export const CATALOG = Object.freeze([
     permissions: ['app.window', 'app.storage'],
     digest: '0f84eedb0ae7436860d81d41453cd09edf04cf2c1cda51bd0ab7573b3185ee3f',
     packageUrl: 'https://apps.bitos.dev/releases/weather-3.0.1.bitos-app',
+    catalog: { status: 'revoked', reviewedAt: REVIEWED_AT, snapshot: CATALOG_SNAPSHOT, reason: 'revoked after a bad build' },
   }),
   entry({
     publisherKey: P1, appId: 'vault', name: 'Vault', version: '0.9.0', icon: 'fold',
