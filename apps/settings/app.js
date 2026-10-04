@@ -297,10 +297,10 @@ registerApp('settings', {
       <section class="set-detail" data-setdetail></section>
     </div>`;
     paintAv(body.querySelector('[data-card-av]'), 38);
-    let cur = 'profile';
+    let cur = 'profile', curHit = null;
     const prof = body.querySelector('.set-prof');
     prof.title = 'open profile';
-    prof.onclick = () => { renderDetail('profile'); renderList(); };
+    prof.onclick = () => { curHit = null; renderDetail('profile'); renderList(); };
     const syncProf = () => prof.classList.toggle('on', cur === 'profile');
 
     const listEl = body.querySelector('[data-setlist]'), detailEl = body.querySelector('[data-setdetail]'), qEl = body.querySelector('[data-setq]');
@@ -321,7 +321,7 @@ registerApp('settings', {
         if (hay.includes(q)) hits.push({ s, r });
       })));
       listEl.innerHTML = hits.length
-        ? hits.map(h => `<button class="set-item${h.r.sec === cur ? ' on' : ''}" data-sec="${h.s.id}" data-hit="${h.r.id}"><span class="sv">${icon(h.s.icon, 16)}</span><span><b>${esc(h.r.label)}</b><em>${esc(h.s.name)}</em></span></button>`).join('')
+        ? hits.map(h => `<button class="set-item${h.r.id === curHit ? ' on' : ''}" data-sec="${h.s.id}" data-hit="${h.r.id}"><span class="sv">${icon(h.s.icon, 16)}</span><span><b>${esc(h.r.label)}</b><em>${esc(h.s.name)}</em></span></button>`).join('')
         : `<div class="set-empty">no settings match “${esc(q)}”</div>`;
     }
     function renderList() {
@@ -355,10 +355,11 @@ registerApp('settings', {
 
     listEl.addEventListener('click', e => {
       const item = e.target.closest('[data-sec]'); if (!item) return;
-      renderDetail(item.dataset.sec, item.dataset.hit || null);
+      curHit = item.dataset.hit || null;
+      renderDetail(item.dataset.sec, curHit);
       renderList();
     });
-    qEl.oninput = () => renderList();
+    qEl.oninput = () => { if (!qEl.value.trim()) curHit = null; renderList(); };
     qEl.onkeydown = e => { if (e.key === 'Escape') { qEl.value = ''; renderList(); } };
 
     renderList();

@@ -606,7 +606,7 @@ body.no-resize .w-rz{display:none}
 .set .row .rt .lbl{display:block;margin-bottom:4px}
 .set .row input{background:rgba(0,0,0,.3);border:1px solid var(--hair);border-radius:var(--br);
   padding:7px 11px;font:400 12.5px var(--fys);width:190px}
-.set .row input:focus{outline:none;border-color:var(--acc)}
+.set .row input:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-t)}
 input[type="color"].accpick{width:30px;height:28px;padding:2px;border:1px solid var(--hair);border-radius:var(--br);background:none;cursor:pointer;flex:none}
 input[type="color"].accpick::-webkit-color-swatch-wrapper{padding:0}
 input[type="color"].accpick::-webkit-color-swatch{border:1px solid var(--hair);border-radius:4px}
@@ -642,6 +642,11 @@ input[type="color"].accpick.on{border-color:var(--acc);box-shadow:0 0 0 3px var(
 .sw.on{box-shadow:0 0 0 2px var(--bg1),0 0 0 4px var(--acc)}
 .sw.custom{background:conic-gradient(from 0deg,#ff3b30,#ff9500,#ffcc00,#34c759,#00c7be,#0a84ff,#5e5ce6,#ff2d55,#ff3b30)}
 .sw .pick{position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0;border:none;cursor:pointer}
+.sw .pick:focus-visible{outline:none}
+.sw:focus-within{box-shadow:0 0 0 3px var(--acc-t)}
+.tcard:focus-visible{outline:none}
+.tcard:focus-visible .tp{outline:2px solid var(--acc);outline-offset:2px}
+.tcard:focus-visible .tn{color:var(--acc2)}
 .accname{font:400 11px var(--fys);color:var(--ink3);text-transform:capitalize}
 #cc .sw{width:15px;height:15px}
 #cc .swatches{gap:4px}
@@ -653,6 +658,7 @@ input[type="color"].accpick.on{border-color:var(--acc);box-shadow:0 0 0 3px var(
 .set-search svg{color:var(--ink3);flex:none}
 .set-search input{flex:1;min-width:0;background:none;border:none;outline:none;font:400 12.5px var(--fys);color:var(--ink)}
 .set-search input::placeholder{color:var(--ink3)}
+.set-search:focus-within{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-t)}
 .set-prof{display:flex;align-items:center;gap:10px;padding:8px 12px 10px}
 .set-prof canvas{border-radius:50%;flex:none;border:1px solid var(--hair)}
 .set-prof .pn{font:600 12.5px var(--fys);color:var(--ink)}
@@ -662,21 +668,25 @@ input[type="color"].accpick.on{border-color:var(--acc);box-shadow:0 0 0 3px var(
 .set-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:7px 10px;border-radius:7px;
   font:400 13px var(--fys);color:var(--ink2);cursor:pointer}
 .set-item:hover{background:var(--bg3);color:var(--ink)}
-.set-item.on{background:var(--acc);color:#fff}
+.set-item.on{background:var(--acc-t2)}
 .set-item .sv{flex:none;color:var(--acc2)}
-.set-item.on .sv{color:#fff}
+.set-item.on .sv{color:var(--acc)}
 .set-item b{font-weight:500;color:var(--ink)}
-.set-item.on b{color:#fff}
+.set-item.on b{color:var(--ink)}
 .set-item em{display:block;font-style:normal;font:400 10px var(--fm);color:var(--ink3);margin-top:1px}
-.set-item.on em{color:rgba(255,255,255,.72)}
+.set-item.on em{color:var(--ink3)}
 .set-empty{padding:18px 12px;font:400 12px/1.6 var(--fys);color:var(--ink3)}
 .set-detail{min-width:0;overflow:auto}
 .set-detail .set-h{position:sticky;top:0;z-index:2;background:var(--bg1);border-bottom:1px solid var(--hair);padding:15px 22px 11px}
 .set-detail .set-h h1{font:600 17px var(--fys);color:var(--ink)}
 .set-detail .set-h .sub{font:400 11px var(--fm);color:var(--ink3);margin-top:3px}
 .set-body.set{max-width:none;padding:14px 22px 30px;width:100%}
-.set .row.hit{background:var(--acc-t);box-shadow:inset 2px 0 0 var(--acc);border-radius:6px}
+.set .row.hit{position:relative;margin:0 -12px;padding-left:12px;padding-right:12px;border-radius:9px;
+  border-bottom-color:transparent;background:var(--acc-t);box-shadow:inset 0 0 0 1px var(--acc-t2);
+  animation:hitflash 1.5s var(--ease)}
 .set .row.hit .lbl{color:var(--acc2)}
+@keyframes hitflash{0%{background:var(--acc-t2);box-shadow:inset 0 0 0 1px var(--acc)}
+  100%{background:var(--acc-t);box-shadow:inset 0 0 0 1px var(--acc-t2)}}
 .set-prof{cursor:pointer}
 .set-prof:hover .pn{color:var(--acc2)}
 .set .row .sel select{width:190px;background:rgba(0,0,0,.3);border:1px solid var(--hair);border-radius:var(--br);
