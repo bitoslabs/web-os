@@ -87,6 +87,14 @@ eco.uninstall(b1.key, { keepData: false });
 ok('uninstall drops current and rollback bytes', !eco.hasPackage(d1) && !eco.hasPackage(d2));
 ok('uninstall clears release history', eco.listReleases(b1.key).length === 0);
 
+/* Dock pins (APP-10). */
+const p1 = eco.install({ schema: 1, publisherKey: 'local', appId: 'pinme', version: '1.0.0', name: 'Pin Me', permissions: [] }, { source: 'local-file' });
+eco.setPinned(p1.key, true);
+ok('pin appears in listPinned', eco.listPinned().some(r => r.key === p1.key));
+eco.setPinned(p1.key, false);
+ok('unpin removes from listPinned', !eco.listPinned().some(r => r.key === p1.key));
+eco.uninstall(p1.key, { keepData: false });
+
 rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

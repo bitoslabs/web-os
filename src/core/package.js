@@ -63,11 +63,13 @@ export function bytesForFile(file) {
   if (file.encoding === 'base64') return base64Bytes(file.data);
   return null;
 }
-export async function sha256Hex(bytes) {
+export async function sha256Bytes(bytes) {
   const subtle = globalThis.crypto && globalThis.crypto.subtle;
   if (!subtle) throw new Error('SHA-256 is unavailable in this environment');
-  const buf = await subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  return new Uint8Array(await subtle.digest('SHA-256', bytes));
+}
+export async function sha256Hex(bytes) {
+  return [...await sha256Bytes(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 export async function sha256File(file) { return sha256Hex(bytesForFile(file)); }
 

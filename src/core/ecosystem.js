@@ -148,6 +148,7 @@ function recordFrom(desc, opts, now) {
     permissions: [...(desc.permissions || [])], minBitosApi: desc.minBitosApi || 1,
     packageUrl: desc.packageUrl || '', entryUrl: desc.entryUrl || '', content: desc.content || '',
     packageDigest: dg, releaseVerified: !!desc.releaseVerified, releaseTrusted: !!desc.releaseTrusted, releaseKey: desc.releaseKey || '',
+    pinned: !!desc.pinned,
     source: opts.source || 'catalog',
     state: 'installing', installedAt: now, updatedAt: now,
     validation: { ok: true, at: now },
@@ -257,6 +258,16 @@ export function uninstall(key, opts) {
   (releaseIndex.get(key) || []).forEach(r => idbDelIn('releases', releaseId(key, r.version, r.digest)).catch(() => { }));
   releaseIndex.delete(key);
   persist(); emit({ type: 'uninstall', key });
+}
+
+export function listPinned() { return listInstalls().filter(r => r.pinned && r.state === 'ready'); }
+export function setPinned(key, pinned) {
+  const rec = ensure().installs[key];
+  if (!rec) throw new Error('not installed');
+  rec.pinned = !!pinned;
+  rec.updatedAt = Date.now();
+  persist(); emit({ type: 'pin', key, pinned: rec.pinned });
+  return rec.pinned;
 }
 
 /* ================= grants ================= */

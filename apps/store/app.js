@@ -9,7 +9,7 @@ import {
   grantsOf, setGrant, isGranted, dataUsage, clearAppData,
   isNewer, validateDescriptor, appKey, systemKey, isSystemKey,
   PERMISSION_LABELS, onEcosystemChange, hasPackage, verifyCatalog, listReleases,
-  readCatalogCache, cacheCatalogSnapshot,
+  readCatalogCache, cacheCatalogSnapshot, setPinned, loadTrustMap,
 } from '../../src/core/index.js';
 import { preview as previewSource, install as installSource, curatedDecision, installCurated } from '../../src/core/installer.js';
 import { WM } from '../../src/shell/window-manager.js';
@@ -73,6 +73,9 @@ registerApp('store', {
     let busy = false;
     let catalogStatus = { status: 'checking', reason: '' };
     let catalogCachedAt = 0;
+    let derivedTrust = {};
+    const trustedSigner = (publisherKey, releaseKey) =>
+      isTrustedSigner(publisherKey, releaseKey) || (derivedTrust[publisherKey] || []).includes(releaseKey);
     const catalogBlocked = () => catalogStatus.status === 'invalid';
     function paintCatalog() {
       const el = body.querySelector('[data-catstatus]'); if (!el) return;
@@ -242,11 +245,12 @@ registerApp('store', {
         out.push(`<span class="st-chip${runnable ? '' : ' dim'}">${runnable ? 'runs sandboxed' : 'metadata only'}</span>`);
         if (hasBytes) out.push('<span class="st-chip">package bytes verified</span>');
         if ((rec && rec.releaseVerified) || it.releaseVerified) {
-          const trusted = (rec && rec.releaseTrusted) || (rec && isTrustedSigner(rec.publisherKey, rec.releaseKey));
+          const trusted = (rec && rec.releaseTrusted) || (rec && trustedSigner(rec.publisherKey, rec.releaseKey));
           out.push(`<span class="st-chip${trusted ? '' : ' dim'}">${trusted ? 'trusted publisher' : 'release signed'}</span>`);
         }
       }
       if (rec && rec.previousVersion) out.push('<span class="st-chip dim">rollback available</span>');
+      if (rec && rec.pinned) out.push('<span class="st-chip dim">pinned</span>');
       return `<div class="st-chips">${out.join('')}</div>`;
     }
 
@@ -353,6 +357,10 @@ registerApp('store', {
         ${rec.summary ? `<p class="st-summary">${esc(rec.summary)}</p>` : ''}
         ${publisherBox(rec, rec)}
         <div class="grpbox"><span class="lbl">permissions</span>${permRows(rec.permissions, rec.key)}</div>
+        <div class="grpbox"><span class="lbl">dock</span>
+          <div class="perm-row"><span>${icon('grid', 13)}<b>pin to dock</b><em>keep this app in the dock</em></span>
+            <button class="sw2${rec.pinned ? ' on' : ''}" data-pin role="switch" aria-checked="${!!rec.pinned}" title="${rec.pinned ? 'unpin' : 'pin'} ${esc(rec.name)}"><i></i></button></div>
+        </div>
         <div class="grpbox"><span class="lbl">app data</span>
           <div class="st-kv"><span>private namespace</span><b class="mono-dim">${dataUsage(rec.key)} / 65536 bytes</b></div>
           <div class="u-row u-gap-8 st-actions"><button class="btn sm ghost" data-clear-data>clear app data</button></div>
@@ -360,6 +368,11 @@ registerApp('store', {
         <div class="grpbox"><span class="lbl">version history</span>${releaseHistory(rec.key)}</div>
         <div class="u-row u-gap-8 st-actions">${actions}</div>`;
       wirePerms(rec);
+      const pin = detailEl.querySelector('[data-pin]'); if (pin) pin.onclick = () => {
+        const next = !rec.pinned;
+        try { setPinned(rec.key, next); toast(esc(rec.name) + (next ? ' pinned to dock' : ' unpinned'), next ? 'ok' : 'info'); }
+        catch (e) { toast('could not change pin — ' + esc(e.message || e), 'err'); }
+      };
       detailEl.querySelector('[data-open]').onclick = () => openApp(rec);
       const up = detailEl.querySelector('[data-update]'); if (up) up.onclick = () => doUpdate(rec, upd, up);
       const rb = detailEl.querySelector('[data-rollback]'); if (rb) rb.onclick = () => doRollback(rec, rb);
@@ -480,11 +493,14 @@ registerApp('store', {
       const p = await previewSource(pkg);
       if (!p.ok) { const e = p.errors[0]; toast('invalid package — ' + esc(e.code) + ' ' + esc(e.message), 'err'); return; }
       const perms = p.permissions;
-      const body = 'package ' + p.digest.slice(0, 16) + '… · ' + (perms.length ? 'requests: ' + perms.join(', ') + '.' : 'requests no permissions.') + ' local packages are unverified.';
+      const rp = pkg.release && pkg.release.publisherKey;
+      const tk = (rp && derivedTrust[rp] && derivedTrust[rp].length) ? { [rp]: derivedTrust[rp] } : null;
+      const trustNote = pkg.release ? (tk ? ' signed by a trusted publisher.' : ' signer is not in the trust registry.') : ' local packages are unverified.';
+      const body = 'package ' + p.digest.slice(0, 16) + '… · ' + (perms.length ? 'requests: ' + perms.join(', ') + '.' : 'requests no permissions.') + trustNote;
       const ok = await dialog({ title: 'install ' + p.name + ' v' + p.version + '?', body, ok: 'install' });
       if (!ok) return;
       let r;
-      try { r = await installSource(pkg, { source: 'local-file' }); }
+      try { r = await installSource(pkg, { source: 'local-file', trustedKeys: tk }); }
       catch (e) { toast('install failed — ' + esc(e.message || e), 'err'); return; }
       view = 'installed'; sel = r ? r.key : null; refresh();
       toast('<b>' + esc(p.name) + '</b> installed from package', 'ok', { label: 'open', fn: () => r && openApp(r) });
@@ -550,6 +566,7 @@ registerApp('store', {
     readCatalogCache().then(c => {
       if (c && c.verification && body.isConnected) { catalogStatus = c.verification; catalogCachedAt = c.at; paintCatalog(); }
     }).catch(() => { });
+    loadTrustMap().then(m => { derivedTrust = m || {}; if (body.isConnected) refresh(); }).catch(() => { });
     verifyCatalog(CATALOG, CATALOG_META, CATALOG_SIGNER).then(s => {
       catalogStatus = s; catalogCachedAt = 0; paintCatalog();
       cacheCatalogSnapshot(CATALOG, CATALOG_META, s).catch(() => { });

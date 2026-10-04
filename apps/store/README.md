@@ -47,8 +47,10 @@ it is built from Nostr identities later.
 
 Package bytes and install/grant/app-data metadata persist in IndexedDB
 (`src/core/idb.js`), hydrated at boot with a migration from the older
-localStorage records (which stay as a mirror). An interrupted install/update recovers to the previous version (or shows a
-`broken` state that stays removable). Every installed `(version, digest)` is
+localStorage records (which stay as a mirror). Installed apps can be pinned from the detail view (`setPinned`); the dock and
+desktop icons re-render when the pinned set changes and open installed apps with
+their sandbox definition. An interrupted install/update recovers to the previous
+version (or shows a `broken` state that stays removable). Every installed `(version, digest)` is
 recorded in the IndexedDB `releases` store and shown as version history on the
 Installed detail. Not yet: signed release binding, catalog
 approval, and verifying staged bytes against a signed release. Records without a

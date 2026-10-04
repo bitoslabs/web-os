@@ -9,10 +9,10 @@
    ========================================================================== */
 
 const DB_NAME = 'bitos-apps';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE = 'packages';
 const META_STORES = ['installs', 'grants', 'appData'];
-const EXTRA_STORES = ['releases', 'listings', 'catalog'];
+const EXTRA_STORES = ['releases', 'listings', 'catalog', 'trust'];
 
 const memory = new Map();
 let opening = null;
@@ -125,7 +125,7 @@ export async function idbAll() {
 }
 
 /* Generic per-store helpers for the extra stores (releases, listings, catalog). */
-const extraMemory = { releases: new Map(), listings: new Map(), catalog: new Map() };
+const extraMemory = { releases: new Map(), listings: new Map(), catalog: new Map(), trust: new Map() };
 function extraMem(store) { return extraMemory[store] || (extraMemory[store] = new Map()); }
 
 export async function idbPutIn(store, key, value) {

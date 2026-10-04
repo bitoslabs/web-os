@@ -5,7 +5,7 @@
  * frame runtime (APP-05), which is not part of this build, so opening an
  * installed app presents its verified metadata instead of executing package
  * code in the shell. */
-import { esc, icon, toast, listInstalls, getInstall, isSystemKey, grantsOf, dataUsage, PERMISSION_LABELS } from '../core/index.js';
+import { esc, icon, toast, listInstalls, listPinned, getInstall, isSystemKey, grantsOf, dataUsage, PERMISSION_LABELS } from '../core/index.js';
 import { WM } from './window-manager.js';
 import { canRun, runtimeDef } from './app-frame.js';
 
@@ -17,6 +17,11 @@ export function installedLaunchEntries() {
 
 /* Run in the sandbox when the record has an entry source, else show identity. */
 export function defFor(r) { return canRun(r) ? runtimeDef(r) : appInfoDef(r); }
+
+/* Pinned ready installs, as dock entries with a definition for WM.open. */
+export function pinnedLaunchEntries() {
+  return listPinned().map(r => ({ id: r.key, label: r.name, ic: r.icon || 'grid', def: defFor(r) }));
+}
 
 export function openInstalled(key) {
   const r = getInstall(key);

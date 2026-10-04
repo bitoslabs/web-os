@@ -20,7 +20,9 @@ Built-in apps share shell code and can use internal modules. Installable apps ar
 5. Check keyboard access, readable contrast, narrow window layout, startup without network, and clean behavior after reload. Test errors and empty states for real apps.
 6. Build the package with `make pack SRC=<app-folder>` (or `node scripts/pack.mjs <app-folder>`). The tool reads `app.json`, hashes every listed file, writes `<id>-<version>.bitos-app`, and validates the result before writing. The placeholder digests in the starter are replaced automatically. Optionally sign it with `make sign-release FILE=<id>-<version>.bitos-app`, which embeds an Ed25519 `release` envelope without changing the payload digest. Validate fixtures with `make check-package`.
 
-The [package format](PACKAGE_FORMAT.md) is frozen for v1 (canonical JSON container, SHA-256 per file and per package). Publishing still needs signed release and listing events (APP-13/14).
+7. Optionally publish a listing: `make list-release FILE=<id>-<version>.bitos-app KEY=<64-hex nostr secret>` builds and BIP-340-signs a NIP-89 listing event and prints it for a relay. The secret key stays in the process.
+
+The [package format](PACKAGE_FORMAT.md) is frozen for v1 (canonical JSON container, SHA-256 per file and per package). Relay trust policy and broadcasting are still open (APP-13/14).
 
 ## Manifest and identity
 

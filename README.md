@@ -52,6 +52,10 @@ os-web/
       catalog-sign.js Ed25519 catalog snapshot signature verification
       release-sign.js  Ed25519 release manifest signing/verification
       catalog-store.js catalog snapshot/listings IndexedDB cache
+      nostr-event.js  NIP-01 event IDs, listing parse, verifier hook
+      relay.js        relay subscription + listing candidate collector
+      schnorr.js      BIP-340 x-only Schnorr sign/verify (preview)
+      trust-registry.js publisher -> release-signer bindings from listings
       index.js        barrel re-export of the core
     data/             content and simulation, separated from programs
       handbook.js     HBDATA design-system sections
@@ -90,8 +94,13 @@ os-web/
   scripts/test-appdoc.mjs   package document + metadata fixtures
   scripts/test-catalog.mjs  catalog approval + signature fixtures
   scripts/test-release.mjs  release-signature fixtures
+  scripts/test-nostr.mjs    NIP-01 listing-event fixtures
+  scripts/test-relay.mjs    relay listing-client fixtures
+  scripts/test-schnorr.mjs  BIP-340 official test vectors
+  scripts/test-trust.mjs    publisher trust-binding fixtures
   scripts/sign-catalog.mjs  re-sign the catalog snapshot
   scripts/sign-release.mjs  sign a packaged release
+  scripts/list-release.mjs  build + sign a Nostr listing event
   docs/               upstream reference docs
 ```
 

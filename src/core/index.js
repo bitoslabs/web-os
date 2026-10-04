@@ -16,3 +16,7 @@ export * from './package.js';
 export * from './appdoc.js';
 export * from './catalog-sign.js';
 export * from './catalog-store.js';
+export * from './nostr-event.js';
+export * from './relay.js';
+export * from './schnorr.js';
+export * from './trust-registry.js';

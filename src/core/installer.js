@@ -14,8 +14,9 @@ import {
 } from './ecosystem.js';
 
 function descriptorFromManifest(m, digest, release, trusted) {
+  const pk = release && /^[0-9a-f]{64}$/.test(release.publisherKey || '') ? release.publisherKey : 'local';
   return {
-    schema: 1, publisherKey: 'local', appId: m.id, version: m.version, name: m.name,
+    schema: 1, publisherKey: pk, appId: m.id, version: m.version, name: m.name,
     summary: m.description || '', entry: m.entry,
     icon: /^[a-z0-9]{1,16}$/i.test(m.icon || '') ? m.icon : 'grid',
     minBitosApi: m.minBitosApi || 1, permissions: m.permissions || [], packageDigest: digest || '',
