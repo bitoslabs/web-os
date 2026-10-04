@@ -16,15 +16,8 @@ export function closeMenu() {
 }
 export function openMenu(anchor, items, dir = 'down', opts) {
   closeMenu();
-  const hasCheck = items.some(m => m && m !== '-' && m.check !== undefined);
   menuEl = el('div', 'menu' + ((opts && opts.compact) ? ' compact' : ''));
-  items.forEach(m => {
-    if (m === '-') { menuEl.append(el('div', 'msep')); return; }
-    if (m.dis) { menuEl.append(el('div', 'mi dis', `<span>${m.t}</span>`)); return; }
-    const mi = el('div', 'mi', `${m.ic ? icon(m.ic, 14) : ''}<span>${m.t}</span>${m.k ? `<span class="k">${m.k}</span>` : ''}${hasCheck ? `<span class="chk">${m.check ? icon('check', 13) : ''}</span>` : ''}`);
-    mi.onclick = () => { closeMenu(); m.fn(); };
-    menuEl.append(mi);
-  });
+  renderItems(menuEl, items);
   menuEl.style.visibility = 'hidden'; document.body.append(menuEl);
   const z = uiZoom();
   const r = anchor.getBoundingClientRect(), mr = menuEl.getBoundingClientRect();
@@ -33,6 +26,20 @@ export function openMenu(anchor, items, dir = 'down', opts) {
   let y = dir === 'down' ? r.bottom / z + 4 : r.top / z - mh - 8;
   y = clamp(y, 8, innerHeight / z - mh - 8);
   menuEl.style.left = x + 'px'; menuEl.style.top = y + 'px'; menuEl.style.visibility = '';
+}
+/* Shortcut then check trail together: keys stay flush right and the check is
+ * the last glyph. Only checked rows render a check, so shortcuts aren't nudged. */
+function renderItems(container, items) {
+  items.forEach(m => {
+    if (m === '-') { container.append(el('div', 'msep')); return; }
+    if (m.dis) { container.append(el('div', 'mi dis', `<span>${m.t}</span>`)); return; }
+    const k = m.k ? `<span class="k">${m.k}</span>` : '';
+    const chk = m.check ? `<span class="chk">${icon('check', 13)}</span>` : '';
+    const tail = (k || chk) ? `<span class="tail">${k}${chk}</span>` : '';
+    const mi = el('div', 'mi', `${m.ic ? icon(m.ic, 14) : ''}<span>${m.t}</span>${tail}`);
+    mi.onclick = () => { closeMenu(); m.fn(); };
+    container.append(mi);
+  });
 }
 export function openContextMenu(x, y, items) {
   openMenu({ getBoundingClientRect: () => ({ left: x, top: y, right: x, bottom: y, width: 0, height: 0 }) }, items, 'down', { compact: true });
