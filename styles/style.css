@@ -227,6 +227,8 @@ body.big .dtil{width:50px;height:50px}
 .dk .wcount.on{opacity:1;transform:scale(1)}
 .dk.launch{animation:dkbounce .52s var(--ease)}
 @keyframes dkbounce{0%,100%{transform:translateY(0)}35%{transform:translateY(-12px)}70%{transform:translateY(-3px)}}
+.dk.recv{animation:dkrecv .5s var(--ease)}
+@keyframes dkrecv{0%,100%{transform:none}45%{transform:translateY(4px) scale(.9)}}
 .dlab{position:absolute;bottom:calc(100% + 14px + var(--lift,0px));left:50%;transform:translateX(-50%);
   padding:4px 11px;background:var(--mat);backdrop-filter:blur(12px);border:1px solid rgba(var(--ov),.14);
   border-radius:6px;font:400 11.5px var(--fys);color:#fff;opacity:0;pointer-events:none;

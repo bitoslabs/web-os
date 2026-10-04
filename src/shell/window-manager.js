@@ -155,6 +155,7 @@ export const WM = {
     const dx = (dr.left + dr.width / 2 - (r.left + r.width / 2)) / z, dy = (dr.top + dr.height / 2 - (r.top + r.height / 2)) / z;
     e.style.transition = 'transform .3s cubic-bezier(.4,0,.9,.4), opacity .3s';
     e.style.transform = `translate(${dx}px,${dy}px) scale(.06)`; e.style.opacity = '0';
+    dockFeedback(w.id, 'recv');
     setTimeout(() => {
       e.style.display = 'none'; e.style.transition = ''; e.style.transform = ''; e.style.opacity = '';
       if (this.cur === w) { this.cur = null; this.focusNext(); }
@@ -176,6 +177,7 @@ export const WM = {
       e.style.transform = ''; e.style.opacity = '';
       setTimeout(() => { e.style.transition = ''; }, 340);
     }
+    dockFeedback(w.id, 'launch');
     this.focus(w); dockSync();
   },
   toggleMin(w) { w.min ? this.restore(w) : this.minimize(w); },
@@ -207,4 +209,14 @@ export function dockSync() {
     const c = d.querySelector('.wcount');
     if (c) { c.textContent = n > 1 ? String(n) : ''; c.classList.toggle('on', n > 1); }
   });
+}
+
+/* Pulse the dock button so minimize reads as "into the icon" and restore as
+ * "out of it". Animated CSS is suppressed under reduce-motion. */
+export function dockFeedback(id, cls = 'launch') {
+  const dk = document.querySelector(`.dk[data-app="${id}"]`);
+  if (!dk) return;
+  dk.classList.remove('launch', 'recv'); void dk.offsetWidth;
+  dk.classList.add(cls);
+  setTimeout(() => dk.classList.remove(cls), 560);
 }

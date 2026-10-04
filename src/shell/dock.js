@@ -4,7 +4,7 @@
  * the menu key) opens per-app actions: new window, show all windows, quit. */
 import { $, el, icon, toast, store, APPS } from '../core/index.js';
 import { SHELL_APPS } from './launchers.js';
-import { WM } from './window-manager.js';
+import { WM, dockFeedback } from './window-manager.js';
 import { openMenu, openContextMenu } from './menus.js';
 import { openLP } from './launchpad.js';
 
@@ -47,17 +47,10 @@ function handleDockClick(id, anchor) {
   if (id === 'launchpad') { openLP(); return; }
   const wins = [...WM.wins.values()].filter(w => w.id === id);
   const top = wins.sort((a, b) => (+b.el.style.zIndex || 0) - (+a.el.style.zIndex || 0))[0];
-  if (!top) { WM.open(id); bounce(anchor); return; }
+  if (!top) { WM.open(id); dockFeedback(id); return; }
   if (top.min) WM.restore(top);
   else if (WM.cur === top && wins.length === 1) WM.minimize(top);
   else WM.focus(top);
-}
-
-/* macOS-style launch bounce; suppressed by reduce-motion via global CSS. */
-function bounce(dk) {
-  dk.classList.remove('launch'); void dk.offsetWidth;
-  dk.classList.add('launch');
-  setTimeout(() => dk.classList.remove('launch'), 520);
 }
 
 function openDockMenu(id, label, x, y) {
