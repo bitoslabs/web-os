@@ -19,7 +19,7 @@
   --acc:#8b5cf6; --acc2:#a78bfa; --acc-t:rgba(139,92,246,.14); --acc-t2:rgba(139,92,246,.30);
   --ok:#58c26c; --warn:#e0a94a; --err:#e5484d; --cyan:#54b9c7;
   --tlr:10px; --mr:8px; --br:6px;
-  --mbh:34px; --dkz:96px;
+  --mbh:34px;
   --fm:'IBM Plex Mono',ui-monospace,monospace;
   --fys:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Ubuntu,'Helvetica Neue',sans-serif;
   --fs:'IBM Plex Sans',var(--fys);
@@ -44,7 +44,7 @@
   --ink-rgb:27,27,34;
   color-scheme:light;
 }
-body.big{--mbh:38px;--dkz:104px;font-size:14px}
+body.big{--mbh:38px;font-size:14px}
 
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -307,7 +307,7 @@ body.big .dtil{width:50px;height:50px}
 .ccsep{height:1px;background:var(--hair);margin:7px 0}
 
 /* ============ desktop / icons / hint ============ */
-#desktop{position:fixed;inset:var(--mbh) 0 var(--dkz) 0;overflow:hidden}
+#desktop{position:fixed;inset:var(--mbh) 0 0 0;overflow:hidden}
 #wall{position:absolute;inset:0;width:100%;height:100%}
 #snap{position:absolute;display:none;z-index:16;background:rgba(139,92,246,.14);border:1px dashed var(--acc);
   border-radius:var(--tlr);pointer-events:none}

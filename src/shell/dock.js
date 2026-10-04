@@ -93,7 +93,7 @@ function openTrashMenu(anchor) {
 }
 
 function attachDockMagnification(dock) {
-  const DOCK_RANGE = 120, DOCK_SCALE = .42, DOCK_LIFT = 14, DOCK_GAP = 3;
+  const DOCK_RANGE = 110, DOCK_SCALE = .48, DOCK_LIFT = 18, DOCK_GAP = 3;
   const dkEls = [...dock.querySelectorAll('.dk')];
   const rest = () => {
     dkEls.forEach(dk => {
@@ -102,14 +102,16 @@ function attachDockMagnification(dock) {
     });
   };
   dock.addEventListener('mousemove', e => {
-    const dr = dock.getBoundingClientRect(), n = dkEls.length;
+    const n = dkEls.length;
     const c = new Array(n), h = new Array(n), s = new Array(n);
     let a = 0, bd = Infinity;
     for (let i = 0; i < n; i++) {
       const dk = dkEls[i], half = dk.offsetWidth / 2;
-      c[i] = dr.left + dk.offsetLeft + half;
+      // The dock is fixed and centered. Its children's rectangles already use
+      // viewport coordinates, which are the same coordinates as clientX.
+      c[i] = dk.getBoundingClientRect().left + half;
       const u = Math.abs(c[i] - e.clientX) / DOCK_RANGE;
-      const f = u >= 1 ? 0 : 1 - u;
+      const f = u >= 1 ? 0 : (1 + Math.cos(Math.PI * u)) / 2;
       s[i] = 1 + DOCK_SCALE * f;
       h[i] = half * s[i];
       const dist = Math.abs(c[i] - e.clientX);
