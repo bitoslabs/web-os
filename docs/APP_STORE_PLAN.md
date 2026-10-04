@@ -3,6 +3,7 @@
 Status: architecture plan; no installer, Store, or live Nostr publishing exists yet.
 
 For a developer-facing walkthrough and sample app, see the [developer guide](APP_DEVELOPER_GUIDE.md) and [installable app template](../templates/installable-app/README.md). The [ecosystem data model](ECOSYSTEM_DATA_MODEL.md) defines identities, release records, catalog decisions, and local storage.
+The [implementation tasks](APP_ECOSYSTEM_TASKS.md) track current feature gaps and acceptance checks.
 
 ## Decision
 

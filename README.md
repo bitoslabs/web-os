@@ -98,6 +98,8 @@ os-web/
 
 For installable third-party apps, start with the [developer guide](docs/APP_DEVELOPER_GUIDE.md) and [app template](templates/installable-app/README.md). The [App Store plan](docs/APP_STORE_PLAN.md) covers installation and Nostr submissions, and the [ecosystem data model](docs/ECOSYSTEM_DATA_MODEL.md) defines the records. The steps above are for trusted built-in apps only.
 
+The [app ecosystem tasks](docs/APP_ECOSYSTEM_TASKS.md) audit current support and list implementation work for app management, install, update, uninstall, catalog, and device integration.
+
 ## Native boundary
 
 In the booted OS the launcher injects `window.__bitosNative`; `src/core/native.js`
