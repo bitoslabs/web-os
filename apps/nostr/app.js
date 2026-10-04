@@ -25,6 +25,7 @@ function evNode(ev) {
   const z = n.querySelector('[data-zap]');
   if (z) z.onclick = () => {
     store.d.satsOut += 21; store.save(); mark('zap'); flashSats();
+    const w = WM.wins.get('nostr'); if (w && w.renderBal) w.renderBal();
     toast(`you zapped <b>${esc(ev.author)}</b> 21 sats`, 'zap');
   };
   return n;
@@ -97,7 +98,7 @@ registerApp('nostr', {
     }
     SIM.events.slice(0, 40).forEach(e => feed.append(evNode(e)));
     renderRelays(); renderBal(); wireComp(body);
-    win.addEvent = addEvent; win.renderRelays = renderRelays;
+    win.addEvent = addEvent; win.renderRelays = renderRelays; win.renderBal = renderBal;
     const send = body.querySelector('[data-send]'), post = body.querySelector('[data-post]'),
       cc = body.querySelector('[data-cc]');
     post.oninput = () => {

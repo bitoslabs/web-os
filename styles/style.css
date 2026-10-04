@@ -599,6 +599,7 @@ body.no-resize .w-rz{display:none}
 .cc.low{color:var(--warn)}
 .secrow{display:flex;gap:8px;align-items:center;margin-top:9px}
 .secmask{font:400 11px var(--fm);color:var(--ink3);letter-spacing:2px;word-break:break-all}
+.secmask.rev{color:var(--err);letter-spacing:1px}
 
 /* ============ settings / monitor / about / start / keys ============ */
 .set{padding:16px 18px;max-width:500px}
@@ -808,6 +809,8 @@ input[type="color"].accpick.on{border-color:var(--acc);box-shadow:0 0 0 3px var(
 [data-theme="light"] .sel select option,
 [data-theme="light"] .fm-sel option{background:#fff;color:var(--ink)}
 [data-theme="light"] .em{background:rgba(0,0,0,.08)}
+[data-theme="light"] .rl{background:rgba(0,0,0,.03)}
+[data-theme="light"] .no .c-acc{color:var(--acc)}
 [data-theme="light"] .grpbox{background:rgba(0,0,0,.03)}
 [data-theme="light"] .hb-nav{background:rgba(0,0,0,.03)}
 [data-theme="light"] .mon canvas{background:rgba(0,0,0,.04)}
