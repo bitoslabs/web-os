@@ -8,6 +8,7 @@ import { setAccent, ACCENT_SWATCHES } from './menubar.js';
 import { openCC, syncCC } from './control-center.js';
 import { newNote, toggleBig, toggleWall } from './menus.js';
 import { mark } from './tour.js';
+import { openLP } from './launchpad.js';
 
 export let spotRes = [], spotSel = 0;
 
@@ -26,6 +27,7 @@ export function spotIndex() {
   ix.push({ k: 'action', t: 'larger text', ic: 'sl', fn: () => { toggleBig(); syncCC(); } });
   ix.push({ k: 'action', t: 'wallpaper on / off', ic: 'sl', fn: () => { toggleWall(); syncCC(); } });
   ix.push({ k: 'action', t: 'control center', ic: 'sl', fn: () => openCC(true) });
+  ix.push({ k: 'action', t: 'launchpad — all apps', ic: 'grid', fn: openLP });
   ix.push({ k: 'action', t: 'copy npub', ic: 'copy', fn: () => copyText(store.d.npub, 'npub copied') });
   ix.push({ k: 'action', t: 'reset demo', ic: 'pow', fn: () => store.reset() });
   ix.push({

@@ -6,6 +6,7 @@ import { WM } from './window-manager.js';
 import { menuEl, closeMenu, newTermTab } from './menus.js';
 import { ccOpen, openCC } from './control-center.js';
 import { spotRes, spotSel, setSpotSel, openSpot, closeSpot, renderSpot } from './search.js';
+import { openLP, closeLP, lpOpen } from './launchpad.js';
 
 export function bindGlobalInput() {
   document.addEventListener('pointerdown', onGlobalPointerDown);
@@ -21,7 +22,8 @@ function onGlobalPointerDown(e) {
 function onGlobalKey(e) {
   if (e.target.closest('.modal,.recovery')) return;
   if ($('#os').classList.contains('hide')) return;
-  if (e.key === 'Escape') { closeMenu(); openCC(false); if (!$('#spot').classList.contains('hide')) closeSpot(); }
+  if (e.key === 'Escape') { closeMenu(); openCC(false); if (lpOpen()) closeLP(); if (!$('#spot').classList.contains('hide')) closeSpot(); }
+  if (e.key === 'F4') { e.preventDefault(); lpOpen() ? closeLP() : openLP(); }
   if (e.code === 'KeyT' && e.ctrlKey && e.altKey) { e.preventDefault(); WM.open('terminal', { fresh: true }); }
   if (e.code === 'KeyT' && e.altKey && !e.ctrlKey && e.shiftKey) { e.preventDefault(); newTermTab(); }
   if (e.code === 'KeyT' && e.altKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); WM.open('terminal', { fresh: true }); }

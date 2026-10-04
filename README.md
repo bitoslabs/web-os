@@ -59,6 +59,7 @@ os-web/
       control-center.js  quick appearance settings
       menubar.js      status bar, clock, accent
       dock.js         pinned launcher + magnification + running dots
+      launchpad.js    full-screen grid of every registered app
       desktop-icons.js   desktop launch surface
       global-input.js global pointer/keyboard routing
       lock.js         preview lock screen

@@ -7,6 +7,7 @@ registerApp('shortcuts', {
     body.innerHTML = `<div class="scrolly keys">
     <span class="lbl kg">keyboard</span>
     <div class="kr"><span class="kk"><kbd>ctrl</kbd><kbd>space</kbd></span>spotlight — everything, one keystroke</div>
+    <div class="kr"><span class="kk"><kbd>F4</kbd></span>launchpad — every app, one grid</div>
     <div class="kr"><span class="kk"><kbd>ctrl</kbd><kbd>alt</kbd><kbd>t</kbd></span>new terminal window</div>
     <div class="kr"><span class="kk"><kbd>?</kbd></span>this panel</div>
     <div class="kr"><span class="kk"><kbd>alt</kbd><kbd>t</kbd></span>new terminal window (file menu)</div>

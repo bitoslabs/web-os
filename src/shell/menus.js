@@ -6,6 +6,7 @@ import { WM } from './window-manager.js';
 import { wall } from './wallpaper.js';
 import { openSpot } from './search.js';
 import { openCC, syncCC } from './control-center.js';
+import { openLP } from './launchpad.js';
 
 export let menuEl = null, menuBtn = null;
 
@@ -48,6 +49,7 @@ export function menuItems(which) {
   const d = store.d;
   switch (which) {
     case 'app': return [
+      { t: 'launchpad', ic: 'grid', k: '<kbd>F4</kbd>', fn: openLP }, '-',
       { t: 'about bitos', ic: 'bolt', fn: () => WM.open('about') }, '-',
       { t: 'getting started…', ic: 'check', fn: () => WM.open('get-started') },
       { t: 'handbook…', ic: 'book', fn: () => WM.open('handbook') },

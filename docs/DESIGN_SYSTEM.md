@@ -121,14 +121,14 @@ All components are defined in `ui/style.css`.
 - **Menus** (`.menu`): real menus; `.mi`, `.chk`, `.msep`, `.dis`. The app menu renames itself to the focused window. `openContextMenu(x,y,items)` reuses the same component for right-click menus.
 - **Modal dialog** (`.modal`): centered card for confirm/prompt flows via `dialog({title,body,input,placeholder,ok,danger})`; resolves the field value, `true`/`false`, or `null` when cancelled. Enter confirms, Escape cancels, and empty prompts keep the confirm button disabled.
 - **Windows** (`.win`): `10px` radius, `40px` centered header, opaque body, `18px` corner grip. Focused windows get a deeper shadow and lighter hairline. An app can set `unified:true` to drop the centered title and render its own toolbar into the header via `win.tools` (used by Files, Finder-style); the header ignores drag on `button/input/select/textarea/a/[data-no-drag]`.
-- **Chrome**: menu bar (`.mb-*`, height `--mbh`), dock (`.dk`/`.dtil`, zone `--dkz`), spotlight (`#spot`), control center (`#cc`), lock (`#lock`).
+- **Chrome**: menu bar (`.mb-*`, height `--mbh`), dock (`.dk`/`.dtil`, zone `--dkz`), spotlight (`#spot`), launchpad (`#lp`), control center (`#cc`), lock (`#lock`).
 - **Utilities** (`.u-*`): small composable helpers (`u-row`, `u-col`, `u-grow`, `u-gap-4/6/8`, `u-nowrap`, `u-mono`, `u-muted`, `u-small`, `u-mt-14`) for layout and text repeated across apps, so one-off inline styles are avoided. `.mono-dim` is the shared mono-faint text class.
 
 Windows are keyed by a window key (`WM.open(id,{key,title})`); multiple windows can share one app id, and dock "running" reflects whether any window for that app is open.
 
 ## Layers (z-index)
 
-`desktop content 2–16` → `dock, menu bar 600` → `menus, control center 900` → `spotlight 1000` → `toasts 1100` → `lock 1500` → `boot 2000`.
+`desktop content 2–16` → `dock, menu bar 600` → `menus, control center 900` → `spotlight 1000` → `launchpad 1050` → `toasts 1100` → `lock 1500` → `boot 2000`.
 
 ## Voice
 

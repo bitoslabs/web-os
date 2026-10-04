@@ -38,6 +38,7 @@ bitos/os/
 | `ui/shell/window-manager.js` | Window lifecycle, focus, movement, resize, minimize, close |
 | `ui/shell/launchers.js` | Pinned shell app catalog |
 | `ui/shell/dock.js` and `desktop-icons.js` | App launch surfaces |
+| `ui/shell/launchpad.js` | Full-screen grid of every registered program |
 | `ui/shell/menubar.js` and `menus.js` | System menu bar and menu actions |
 | `ui/shell/search.js` | Search over registered apps and Handbook content |
 | `ui/shell/global-input.js` | Global pointer and keyboard routing |

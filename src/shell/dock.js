@@ -6,16 +6,18 @@ import { $, el, icon, toast, store, APPS } from '../core/index.js';
 import { SHELL_APPS } from './launchers.js';
 import { WM } from './window-manager.js';
 import { openMenu, openContextMenu } from './menus.js';
+import { openLP } from './launchpad.js';
 
 const DOCK_TRASH = ['trash', 'reset demo', 'trash'];
+const DOCK_LAUNCHPAD = ['launchpad', 'launchpad', 'grid'];
 
 export function buildDock() {
   const dock = $('#dock'); dock.innerHTML = '';
-  [...SHELL_APPS, 'sep', DOCK_TRASH].forEach(it => {
+  [...SHELL_APPS, DOCK_LAUNCHPAD, 'sep', DOCK_TRASH].forEach(it => {
     if (it === 'sep') { dock.append(el('span', 'dksep')); return; }
     const [id, label, ic] = it;
     const dk = el('div', 'dk');
-    if (id !== 'trash') dk.dataset.app = id;
+    if (id !== 'trash' && id !== 'launchpad') dk.dataset.app = id;
     dk.dataset.label = label;
     dk.setAttribute('role', 'button');
     dk.setAttribute('aria-label', label);
@@ -24,12 +26,16 @@ export function buildDock() {
     dk.onclick = () => handleDockClick(id, dk);
     dk.addEventListener('contextmenu', e => {
       e.preventDefault();
-      if (id === 'trash') openTrashMenu(dk); else openDockMenu(id, label, e.clientX, e.clientY);
+      if (id === 'trash') openTrashMenu(dk);
+      else if (id === 'launchpad') openLP();
+      else openDockMenu(id, label, e.clientX, e.clientY);
     });
     dk.addEventListener('keydown', e => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
-      if (id === 'trash') openTrashMenu(dk); else handleDockClick(id, dk);
+      if (id === 'trash') openTrashMenu(dk);
+      else if (id === 'launchpad') openLP();
+      else handleDockClick(id, dk);
     });
     dock.append(dk);
   });
@@ -38,6 +44,7 @@ export function buildDock() {
 
 function handleDockClick(id, anchor) {
   if (id === 'trash') { openTrashMenu(anchor); return; }
+  if (id === 'launchpad') { openLP(); return; }
   const wins = [...WM.wins.values()].filter(w => w.id === id);
   const top = wins.sort((a, b) => (+b.el.style.zIndex || 0) - (+a.el.style.zIndex || 0))[0];
   if (!top) { WM.open(id); return; }
