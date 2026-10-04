@@ -53,9 +53,10 @@ os-web/
       release-sign.js  Ed25519 release manifest signing/verification
       catalog-store.js catalog snapshot/listings IndexedDB cache
       nostr-event.js  NIP-01 event IDs, listing parse, verifier hook
-      relay.js        relay subscription + listing candidate collector
+      relay.js        NIP-65 select, listing subscription/quorum, broadcast
       schnorr.js      BIP-340 x-only Schnorr sign/verify (preview)
       trust-registry.js publisher -> release-signer bindings from listings
+      discovery.js    merge discovered listing candidates
       index.js        barrel re-export of the core
     data/             content and simulation, separated from programs
       handbook.js     HBDATA design-system sections
@@ -64,6 +65,7 @@ os-web/
       store-catalog.js  curated catalog snapshot + entries
       catalog-signature.js  generated snapshot public key + signature
       trusted-keys.js   publisher identity -> trusted Ed25519 signer keys
+      trusted-relays.js curated relay trust list
     shell/            desktop-wide behavior
       state.js        shared shell bindings (desk element, session start)
       launchers.js    pinned dock/desktop catalog
@@ -123,7 +125,7 @@ os-web/
 3. Add the id to `BUILT_IN_APPS` in `src/apps.js`.
 4. Add it to `SHELL_APPS` in `src/shell/launchers.js` only if it should be pinned.
 
-For installable third-party apps, start with the [developer guide](docs/APP_DEVELOPER_GUIDE.md) and [app template](templates/installable-app/README.md). The [package format](docs/PACKAGE_FORMAT.md) is frozen for v1 (`make pack`, `make check-package`); the [App Store plan](docs/APP_STORE_PLAN.md) covers installation and Nostr submissions, and the [ecosystem data model](docs/ECOSYSTEM_DATA_MODEL.md) defines the records. The steps above are for trusted built-in apps only.
+For installable third-party apps, start with the [developer guide](docs/APP_DEVELOPER_GUIDE.md) and [app template](templates/installable-app/README.md). The [package format](docs/PACKAGE_FORMAT.md) is frozen for v1 (`make pack`, `make check-package`); the [App Store plan](docs/APP_STORE_PLAN.md) covers installation and Nostr submissions, the [ecosystem data model](docs/ECOSYSTEM_DATA_MODEL.md) defines the records, and [device parity](docs/DEVICE_PARITY.md) is the handoff for the booted OS. The steps above are for trusted built-in apps only.
 
 The [app ecosystem tasks](docs/APP_ECOSYSTEM_TASKS.md) audit current support and list implementation work for app management, install, update, uninstall, catalog, and device integration.
 

@@ -20,3 +20,4 @@ export * from './nostr-event.js';
 export * from './relay.js';
 export * from './schnorr.js';
 export * from './trust-registry.js';
+export * from './discovery.js';

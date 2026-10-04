@@ -974,6 +974,17 @@ body.reduce-motion *{animation:none!important;transition:none!important}
 .st-badge.er{background:rgba(229,72,77,.16);color:var(--err)}
 .store-import{margin:8px 10px 4px;justify-content:center}
 .store-updateall{margin:0 10px 8px;justify-content:center}
+.store-discover{margin:0 10px 8px;justify-content:center}
+.store-relays{margin:0 10px 8px;justify-content:center}
+.rl-card{width:min(460px,100%);gap:10px}
+.rl-list{display:flex;flex-direction:column;gap:2px;max-height:40vh;overflow:auto}
+.rl-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 2px;border-bottom:1px solid rgba(var(--ov),.06)}
+.rl-row:last-child{border-bottom:none}
+.rl-host{font:400 12px var(--fm);color:var(--ink);overflow-wrap:anywhere}
+.rl-roles{display:flex;align-items:center;gap:6px;flex:none}
+.rl-roles .sw2{width:30px;height:18px}
+.rl-roles .sw2 i{width:14px;height:14px}
+.rl-roles .sw2.on i{left:14px}
 .store-item:focus-visible{outline:2px solid var(--acc2);outline-offset:-2px;border-radius:8px}
 .store-foot{padding:8px 14px 12px;font:400 10px var(--fm);color:var(--ink3)}
 .store-detail{min-width:0;overflow:auto;padding:20px 24px 30px}

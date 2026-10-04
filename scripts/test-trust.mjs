@@ -28,5 +28,15 @@ ok('unverified publisher absent', !map[P2]);
 const merged = mergeTrust({ [P1]: ['base-key'] }, map);
 ok('merge unions base and derived', merged[P1].length === 2 && merged[P1].includes('base-key') && merged[P1].includes(rk));
 
+/* Discovery merge. */
+const { mergeCandidates, listingKey, verifiedBindings } = await import('../src/core/discovery.js');
+const a1 = { id: '1', status: 'verified', descriptor: { publisherKey: P1, appId: 'a', releaseKey: rk } };
+const a2 = { id: '2', status: 'invalid', descriptor: { publisherKey: P1, appId: 'a' } };
+const b1 = { id: '3', status: 'verified', descriptor: { publisherKey: P2, appId: 'b', releaseKey: rk } };
+ok('listing key is publisher/app', listingKey(a1) === P1 + '/a');
+const list = mergeCandidates([a1], [a2, b1]);
+ok('merge dedupes by publisher/app', list.length === 2 && list.find(c => c.descriptor.appId === 'a').id === '2');
+ok('verifiedBindings keeps only verified', verifiedBindings(list).length === 1 && verifiedBindings(list)[0].publisherKey === P2);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

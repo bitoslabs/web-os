@@ -22,8 +22,13 @@ Host API `v1` (`window.bitos` in the frame):
 | `storage.get/set/remove/keys/usage/clear` | `app.storage` | private namespace, 64 KiB quota |
 | `window.setTitle/resize/close` | `app.window` | validated and clamped by the shell |
 
-**Install from file…** accepts a descriptor JSON or a validated `.bitos-app`
-package. Package import runs the v1 validator (`src/core/package.js`), caches
+**Relays…** manages the NIP-65 shell roster (read/write roles, primary, add or
+remove) that discovery uses. **Discover relays** fetches listings from the
+trusted relays, verifies each
+NIP-01 signature, adds verified publishers to the trust map, and shows
+candidates as relay listings (not installable unless an approved catalog tuple).
+**Install from file…** also accepts a listing-event JSON. It accepts a descriptor
+JSON or a validated `.bitos-app` package. Package import runs the v1 validator (`src/core/package.js`), caches
 the file set by digest, and the runtime inlines CSS/JS/assets into one
 sandboxed document (`src/core/appdoc.js`).
 

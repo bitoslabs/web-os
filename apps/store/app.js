@@ -10,6 +10,8 @@ import {
   isNewer, validateDescriptor, appKey, systemKey, isSystemKey,
   PERMISSION_LABELS, onEcosystemChange, hasPackage, verifyCatalog, listReleases,
   readCatalogCache, cacheCatalogSnapshot, setPinned, loadTrustMap,
+  fetchListings, parseListingEvent, verifyEvent, schnorrEventVerifier,
+  mergeCandidates, verifiedBindings, saveTrustBindings, LISTING_KIND,
 } from '../../src/core/index.js';
 import { preview as previewSource, install as installSource, curatedDecision, installCurated } from '../../src/core/installer.js';
 import { WM } from '../../src/shell/window-manager.js';
@@ -17,6 +19,8 @@ import { openInstalled } from '../../src/shell/installed-apps.js';
 import { CATALOG, CATALOG_SNAPSHOT, CATALOG_META } from '../../src/data/store-catalog.js';
 import { CATALOG_SIGNER } from '../../src/data/catalog-signature.js';
 import { isTrustedSigner } from '../../src/data/trusted-keys.js';
+import { trustedRelayHosts } from '../../src/data/trusted-relays.js';
+import { SIM } from '../../src/data/sim.js';
 
 const SYS_VERSION = 'built-in';
 
@@ -74,6 +78,7 @@ registerApp('store', {
     let catalogStatus = { status: 'checking', reason: '' };
     let catalogCachedAt = 0;
     let derivedTrust = {};
+    let relayListings = [];
     const trustedSigner = (publisherKey, releaseKey) =>
       isTrustedSigner(publisherKey, releaseKey) || (derivedTrust[publisherKey] || []).includes(releaseKey);
     const catalogBlocked = () => catalogStatus.status === 'invalid';
@@ -113,6 +118,8 @@ registerApp('store', {
         <div class="store-search">${icon('mag', 14)}<input data-q placeholder="search apps" spellcheck="false" aria-label="search apps"></div>
         <div class="store-list" data-list role="listbox" aria-label="apps"></div>
         <button class="btn sm ghost store-import" data-import>${icon('doc', 13)} install from file…</button>
+        <button class="btn sm ghost store-discover" data-discover>${icon('bolt', 13)} discover relays</button>
+        <button class="btn sm ghost store-relays" data-relays>${icon('win', 13)} relays…</button>
         <input type="file" accept=".json,.bitos-app,application/json" hidden data-file>
         <div class="store-foot">${esc(CATALOG_SNAPSHOT)}<br>${CATALOG.length} listings · exact-tuple approval<br><span data-catstatus>checking snapshot signature…</span></div>
       </aside>
@@ -143,7 +150,11 @@ registerApp('store', {
     function items() {
       if (view === 'installed') return [...sysList(), ...instList()];
       if (view === 'updates') return updateList().map(x => x.entry);
-      return CATALOG.slice();
+      const catalogKeys = new Set(CATALOG.map(e => appKey(e.publisherKey, e.appId)));
+      const relay = relayListings
+        .map(c => ({ ...c.descriptor, relay: true, relayStatus: c.status }))
+        .filter(e => !catalogKeys.has(appKey(e.publisherKey, e.appId)));
+      return [...CATALOG.slice(), ...relay];
     }
 
     function itemKey(it) { return it.system || isSystemKey(it.key) ? it.key : appKey(it.publisherKey, it.appId); }
@@ -230,7 +241,9 @@ registerApp('store', {
       if (it.state && it.state !== 'ready') out.push('<span class="st-chip warn">' + esc(it.state) + '</span>');
       if (it.system) out.push('<span class="st-chip">shipped with bitos</span>');
       else {
-        if (it.catalog) {
+        if (it.relay) {
+          out.push(`<span class="st-chip${it.relayStatus === 'verified' ? '' : ' warn'}">relay · ${esc(it.relayStatus || 'unknown')}</span>`);
+        } else if (it.catalog) {
           const d = curatedDecision(it, CATALOG);
           const label = d.approved ? 'catalog approved' : d.status === 'unapproved' ? 'unapproved version' : 'catalog ' + d.status;
           out.push(`<span class="st-chip${d.approved ? '' : ' warn'}">${esc(label)}</span>`);
@@ -506,6 +519,81 @@ registerApp('store', {
       toast('<b>' + esc(p.name) + '</b> installed from package', 'ok', { label: 'open', fn: () => r && openApp(r) });
     }
 
+    function addCandidates(cands) {
+      relayListings = mergeCandidates(relayListings, cands);
+      const binds = verifiedBindings(cands);
+      if (binds.length) saveTrustBindings(binds).catch(() => { });
+      if (body.isConnected) refresh();
+    }
+
+    async function addListingEvent(ev) {
+      const parsed = parseListingEvent(ev);
+      if (!parsed.ok) { toast('invalid listing — ' + esc(parsed.errors[0]), 'err'); return; }
+      const v = await verifyEvent(ev, schnorrEventVerifier);
+      addCandidates([{ id: ev.id || parsed.descriptor.appId, status: v.status, descriptor: parsed.descriptor, relay: 'file' }]);
+      toast('listing ' + esc(parsed.descriptor.appId) + ' · ' + v.status, v.status === 'verified' ? 'ok' : 'info');
+    }
+
+    function doDiscover(btn) {
+      const hosts = trustedRelayHosts();
+      if (!hosts.length) { toast('no trusted relays configured', 'info'); return Promise.resolve(); }
+      return run(btn, 'discovering…', async () => {
+        const roster = typeof SIM.snapshot === 'function' ? SIM.snapshot() : [];
+        const relays = roster.length ? roster : hosts.map(h => ({ host: h, read: true, write: true, on: true }));
+        const found = await fetchListings(relays, { trustedRelays: hosts, minRelays: 1, timeoutMs: 4000 });
+        const verified = found.filter(c => c.status === 'verified').length;
+        addCandidates(found);
+        toast(found.length ? found.length + ' listing(s) · ' + verified + ' verified' : 'no listings found', found.length ? 'ok' : 'info');
+      });
+    }
+
+    /* NIP-65 relay manager over the shell roster (SIM). Read-only fallback when
+     * the roster API is unavailable. */
+    function openRelayManager() {
+      const editable = typeof SIM.addRelay === 'function' && typeof SIM.removeRelay === 'function';
+      const box = el('div', 'modal');
+      const roster = () => (typeof SIM.snapshot === 'function' ? SIM.snapshot()
+        : trustedRelayHosts().map(h => ({ host: h, on: true, read: true, write: true, primary: false })));
+      function draw() {
+        const rows = roster();
+        box.innerHTML = `<div class="modal-card rl-card" role="dialog" aria-modal="true">
+          <div class="modal-t">relays</div>
+          <div class="rl-list">${rows.map(r => `<div class="rl-row" data-host="${esc(r.host)}">
+            <span class="rl-host">${esc(r.host)}${r.primary ? ' · primary' : ''}${r.on ? '' : ' · off'}</span>
+            <span class="rl-roles">
+              <button class="sw2${r.read ? ' on' : ''}" data-role="read" title="read" aria-label="read" ${editable ? '' : 'disabled'}><i></i></button>
+              <button class="sw2${r.write ? ' on' : ''}" data-role="write" title="write" aria-label="write" ${editable ? '' : 'disabled'}><i></i></button>
+              <button class="btn sm ghost" data-primary title="make primary" ${editable ? '' : 'disabled'}>primary</button>
+              <button class="btn sm danger" data-remove ${editable ? '' : 'disabled'}>remove</button>
+            </span></div>`).join('') || '<div class="st-note">no relays configured.</div>'}</div>
+          ${editable ? '<div class="u-row u-gap-8"><input class="modal-in u-grow" data-add placeholder="wss://relay.example" spellcheck="false"><button class="btn sm" data-addbtn>add</button></div>' : ''}
+          <div class="modal-act"><button class="btn sm" data-close>close</button></div>
+        </div>`;
+        box.querySelectorAll('.rl-row').forEach(row => {
+          const host = row.dataset.host;
+          row.querySelectorAll('[data-role]').forEach(b => b.onclick = () => {
+            const role = b.dataset.role, rec = roster().find(r => r.host === host);
+            if (rec) SIM.setRole(host, role, !rec[role]);
+            draw();
+          });
+          const pb = row.querySelector('[data-primary]');
+          if (pb) pb.onclick = () => { SIM.setRole(host, 'primary', true); draw(); };
+          const rb = row.querySelector('[data-remove]');
+          if (rb) rb.onclick = () => { SIM.removeRelay(host); draw(); };
+        });
+        const addBtn = box.querySelector('[data-addbtn]');
+        if (addBtn) addBtn.onclick = () => {
+          const inp = box.querySelector('[data-add]');
+          const r = SIM.addRelay(inp.value);
+          if (!r) toast('not a valid or new relay host', 'err'); else draw();
+        };
+        box.querySelector('[data-close]').onclick = () => box.remove();
+      }
+      draw();
+      box.addEventListener('pointerdown', e => { if (e.target === box) box.remove(); });
+      document.body.append(box);
+    }
+
     function importFile(file) {
       if (!file) return;
       const fr = new FileReader();
@@ -516,6 +604,11 @@ registerApp('store', {
         if (d && d.format === 'bitos-app') {
           try { await importContainer(d); }
           catch (e) { toast('install failed — ' + esc(e.message || e), 'err'); }
+          return;
+        }
+        if (d && d.kind === LISTING_KIND) {
+          try { await addListingEvent(d); }
+          catch (e) { toast('listing failed — ' + esc(e.message || e), 'err'); }
           return;
         }
         const v = validateDescriptor(d);
@@ -542,6 +635,10 @@ registerApp('store', {
     body.querySelector('[data-import]').onclick = () => fileEl.click();
     fileEl.onchange = () => { importFile(fileEl.files && fileEl.files[0]); fileEl.value = ''; };
     updateAllBtn.onclick = doUpdateAll;
+    const discoverBtn = body.querySelector('[data-discover]');
+    if (discoverBtn) discoverBtn.onclick = () => doDiscover(discoverBtn);
+    const relaysBtn = body.querySelector('[data-relays]');
+    if (relaysBtn) relaysBtn.onclick = openRelayManager;
 
     /* Keyboard operation for the list: arrows move, enter runs the primary action. */
     listEl.addEventListener('keydown', e => {
