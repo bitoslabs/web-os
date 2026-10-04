@@ -17,7 +17,7 @@ registerApp('shortcuts', {
     <div class="kr"><span class="kk"><kbd>alt</kbd><kbd>,</kbd></span>settings</div>
     <div class="kr"><span class="kk"><kbd>esc</kbd></span>close menu / spotlight</div>
     <span class="lbl kg">mouse &amp; gestures</span>
-    <div class="kr"><span class="kk">dock</span>hover magnifies · dot = running · click opens, click again docks</div>
+    <div class="kr"><span class="kk">dock</span>hover magnifies · dot = running · tint = focused · badge = window count</div>
     <div class="kr"><span class="kk">right-click dock icon</span>new window · show all · quit</div>
     <div class="kr"><span class="kk">traffic lights</span>red close · yellow docks · green zooms</div>
     <div class="kr"><span class="kk">drag title bar</span>move the window</div>

@@ -22,7 +22,7 @@ export function buildDock() {
     dk.setAttribute('role', 'button');
     dk.setAttribute('aria-label', label);
     dk.tabIndex = 0;
-    dk.innerHTML = `<div class="dtil">${icon(ic, 22)}</div><span class="dot"></span><span class="dlab">${label}</span>`;
+    dk.innerHTML = `<div class="dtil">${icon(ic, 22)}<span class="wcount"></span></div><span class="dot"></span><span class="dlab">${label}</span>`;
     dk.onclick = () => handleDockClick(id, dk);
     dk.addEventListener('contextmenu', e => {
       e.preventDefault();
@@ -47,10 +47,17 @@ function handleDockClick(id, anchor) {
   if (id === 'launchpad') { openLP(); return; }
   const wins = [...WM.wins.values()].filter(w => w.id === id);
   const top = wins.sort((a, b) => (+b.el.style.zIndex || 0) - (+a.el.style.zIndex || 0))[0];
-  if (!top) { WM.open(id); return; }
+  if (!top) { WM.open(id); bounce(anchor); return; }
   if (top.min) WM.restore(top);
   else if (WM.cur === top && wins.length === 1) WM.minimize(top);
   else WM.focus(top);
+}
+
+/* macOS-style launch bounce; suppressed by reduce-motion via global CSS. */
+function bounce(dk) {
+  dk.classList.remove('launch'); void dk.offsetWidth;
+  dk.classList.add('launch');
+  setTimeout(() => dk.classList.remove('launch'), 520);
 }
 
 function openDockMenu(id, label, x, y) {

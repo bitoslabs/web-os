@@ -198,6 +198,13 @@ export const WM = {
 };
 
 export function dockSync() {
-  document.querySelectorAll('.dk[data-app]').forEach(d =>
-    d.classList.toggle('running', [...WM.wins.values()].some(w => w.id === d.dataset.app)));
+  const count = new Map();
+  for (const w of WM.wins.values()) count.set(w.id, (count.get(w.id) || 0) + 1);
+  document.querySelectorAll('.dk[data-app]').forEach(d => {
+    const id = d.dataset.app, n = count.get(id) || 0;
+    d.classList.toggle('running', n > 0);
+    d.classList.toggle('active', !!WM.cur && !WM.cur.min && WM.cur.id === id);
+    const c = d.querySelector('.wcount');
+    if (c) { c.textContent = n > 1 ? String(n) : ''; c.classList.toggle('on', n > 1); }
+  });
 }

@@ -4,7 +4,7 @@
 import { registerApp } from '../../src/core/index.js';
 
 registerApp('vanjs', {
-  title: 'vanjs', icon: 'act', sub: '1.6.1 — hello, reactive', w: 560, h: 400,
+  title: 'vanjs', icon: 'van', sub: '1.6.1 — hello, reactive', w: 560, h: 400,
   mount(body) {
     const { button, div, pre, h1, p } = van.tags;
     const sleep = ms => new Promise(r => setTimeout(r, ms));

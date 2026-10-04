@@ -15,5 +15,5 @@ export const SHELL_APPS = [
   ['handbook', 'handbook', 'book'],
   ['system-monitor', 'sysmon', 'act'],
   ['settings', 'settings', 'sl'],
-  ['vanjs', 'vanjs', 'act'],
+  ['vanjs', 'vanjs', 'van'],
 ];

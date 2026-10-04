@@ -9,6 +9,7 @@ export const ICONS = {
   bolt: '<path d="M13 2 5 13.5h5.2L9 22l8-11.5h-5.2z" fill="currentColor" stroke="none"/>',
   book: '<path d="M4 5.5C6.5 4 9 4.5 12 5.5c3-1 5.5-1.5 8 0V19c-2.5-1.5-5-1-8 0-3-1-5.5-1.5-8 0Z"/><path d="M12 5.5V19"/>',
   act: '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  van: '<path d="M5.5 6 12 19 18.5 6"/>',
   sl: '<path d="M4 6.5h16M4 12h16M4 17.5h16"/><circle cx="9" cy="6.5" r="2.1" style="fill:var(--bg2)"/><circle cx="15" cy="12" r="2.1" style="fill:var(--bg2)"/><circle cx="7" cy="17.5" r="2.1" style="fill:var(--bg2)"/>',
   pow: '<path d="M12 3v8"/><path d="M6.8 6a7.3 7.3 0 1 0 10.4 0"/>',
   copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="1"/><path d="M15.5 5.5h-10v10"/>',
