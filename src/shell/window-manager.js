@@ -6,6 +6,10 @@ import { deskEl, mbAppEl } from './state.js';
 import { mark } from './tour.js';
 
 let zTop = 20;
+/* Windows stack from Z_BASE and never reach the chrome layer (dock/menu bar at
+ * 600), so a focused or full-screen window can never cover the dock. When the
+ * counter nears the cap, renormalize all windows to keep relative order. */
+const Z_BASE = 20, Z_MAX = 590;
 
 /* ================= window manager (aqua) ================= */
 export const WM = {
@@ -22,7 +26,7 @@ export const WM = {
     const x = Math.round(64 + (this.seq % 6) * 38), y = Math.round(30 + (this.seq % 6) * 30); this.seq++;
     const w = { id, key, app: a, min: false, max: false, snapped: false, prev: null, cleanup: null, run: null, render: null, tools: null };
     const e = el('section', 'win focused');
-    e.style.cssText = `left:${x}px;top:${y}px;width:${W}px;height:${H}px;z-index:${++zTop}`;
+    e.style.cssText = `left:${x}px;top:${y}px;width:${W}px;height:${H}px;z-index:${raiseZ()}`;
     const unified = !!a.unified;
     e.innerHTML = `<header class="win-head${unified ? ' unified' : ''}">
       <span class="wtl">
@@ -136,7 +140,7 @@ export const WM = {
   },
   focus(w) {
     document.querySelectorAll('.win.focused').forEach(x => x.classList.remove('focused'));
-    w.el.classList.add('focused'); w.el.style.zIndex = ++zTop; this.cur = w; dockSync();
+    w.el.classList.add('focused'); w.el.style.zIndex = raiseZ(); this.cur = w; dockSync();
     if (mbAppEl) mbAppEl.textContent = w.app.title;
     if (typeof w.focusInput === 'function') { try { w.focusInput(); } catch (e) { } }
     else if (w.id === 'terminal') { const i = w.el.querySelector('.t-in'); i && i.focus(); }
@@ -198,6 +202,16 @@ export const WM = {
     else { this.cur = null; if (mbAppEl) mbAppEl.textContent = 'bitos'; dockSync(); }
   }
 };
+
+/* Raise a window while keeping every window below the chrome layer. */
+function raiseZ() {
+  if (++zTop > Z_MAX) {
+    const ws = [...WM.wins.values()].sort((a, b) => (+a.el.style.zIndex || 0) - (+b.el.style.zIndex || 0));
+    ws.forEach((w, i) => { w.el.style.zIndex = Z_BASE + i; });
+    zTop = Z_BASE + ws.length;
+  }
+  return zTop;
+}
 
 export function dockSync() {
   const count = new Map();
