@@ -335,10 +335,21 @@ registerApp('files', {
       return el;
     }
     function searchInput() {
+      const clear = button({
+        class: 'fm-search-x', type: 'button', title: 'clear search', 'aria-label': 'clear search',
+        onmousedown: e => e.preventDefault(),
+        onclick: () => { searchEl.value = ''; updateTab({ query: '' }); searchEl.focus(); }
+      }, '×');
       searchEl = input({
-        class: 'fm-search', spellcheck: 'false', placeholder: 'search',
-        oninput: () => updateTab({ query: searchEl.value })
-      }); return searchEl;
+        spellcheck: 'false', placeholder: 'search', 'aria-label': 'search files',
+        oninput: () => updateTab({ query: searchEl.value }),
+        onkeydown: e => {
+          if (e.key === 'Escape' && searchEl.value) {
+            e.stopPropagation(); searchEl.value = ''; updateTab({ query: '' });
+          }
+        }
+      });
+      return div({ class: 'fm-search' }, iconEl('mag', 14, 'fm-sic'), searchEl, clear);
     }
     function refreshBtn() {
       return button({ class: 'btn sm ghost', title: 'refresh', 'aria-label': 'refresh', onclick: refresh },
