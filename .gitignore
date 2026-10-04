@@ -39,3 +39,6 @@ __pycache__/
 *.py[cod]
 node_modules/
 .cache/
+
+.vscode/
+.kilo/
