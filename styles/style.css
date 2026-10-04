@@ -198,13 +198,11 @@ kbd{font:500 11px var(--fm);padding:2px 6px;background:rgba(var(--ov),.09);
 
 /* ============ dock ============ */
 #dock{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:600;display:flex;align-items:flex-end;
-  gap:6px;padding:7px 9px}
-#dock::before{content:'';position:absolute;box-sizing:border-box;z-index:-1;pointer-events:none;
-  left:calc(-1 * var(--boxL,0px));right:calc(-1 * var(--boxR,0px));top:0;bottom:0;
+  gap:6px;padding:7px 9px;width:max-content;max-width:calc(100vw - 16px)}
+#dock::before{content:'';position:absolute;inset:0;box-sizing:border-box;z-index:-1;pointer-events:none;
   background:rgba(20,20,29,.5);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border:1px solid rgba(var(--ov),.13);border-radius:18px;box-shadow:0 16px 44px rgba(0,0,0,.5);
-  transition:left .12s var(--ease),right .12s var(--ease)}
-.dk{position:relative;width:44px;height:44px}
+  border:1px solid rgba(var(--ov),.13);border-radius:18px;box-shadow:0 16px 44px rgba(0,0,0,.5)}
+.dk{position:relative;flex:none;width:44px;height:44px}
 body.big .dk{width:50px;height:50px}
 .dtil{position:relative;width:44px;height:44px;display:grid;place-items:center;background:rgba(var(--ov),.09);
   border:1px solid rgba(var(--ov),.1);border-radius:10px;color:rgba(var(--ink-rgb),.92);

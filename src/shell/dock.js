@@ -93,14 +93,13 @@ function openTrashMenu(anchor) {
 }
 
 function attachDockMagnification(dock) {
-  const DOCK_RANGE = 120, DOCK_SCALE = .42, DOCK_LIFT = 14, DOCK_GAP = 3, DOCK_PAD = 9;
+  const DOCK_RANGE = 120, DOCK_SCALE = .42, DOCK_LIFT = 14, DOCK_GAP = 3;
   const dkEls = [...dock.querySelectorAll('.dk')];
   const rest = () => {
     dkEls.forEach(dk => {
       ['--x', '--lift', '--s'].forEach(v => dk.style.removeProperty(v));
       dk.style.zIndex = ''; dk.classList.remove('up');
     });
-    ['--boxL', '--boxR'].forEach(v => dock.style.removeProperty(v));
   };
   dock.addEventListener('mousemove', e => {
     const dr = dock.getBoundingClientRect(), n = dkEls.length;
@@ -119,17 +118,13 @@ function attachDockMagnification(dock) {
     const d = new Array(n).fill(0);
     for (let i = a + 1; i < n; i++) d[i] = d[i - 1] + Math.max(0, h[i - 1] + h[i] - (c[i] - c[i - 1]) + DOCK_GAP);
     for (let i = a - 1; i >= 0; i--) d[i] = d[i + 1] - Math.max(0, h[i] + h[i + 1] - (c[i + 1] - c[i]) + DOCK_GAP);
-    let vL = Infinity, vR = -Infinity;
     for (let i = 0; i < n; i++) {
       dkEls[i].style.setProperty('--x', d[i].toFixed(2) + 'px');
       dkEls[i].style.setProperty('--lift', ((s[i] - 1) * DOCK_LIFT).toFixed(2) + 'px');
       dkEls[i].style.setProperty('--s', s[i].toFixed(3));
       dkEls[i].style.zIndex = String(Math.round(s[i] * 100));
       dkEls[i].classList.toggle('up', s[i] > 1.015);
-      vL = Math.min(vL, c[i] + d[i] - h[i]); vR = Math.max(vR, c[i] + d[i] + h[i]);
     }
-    dock.style.setProperty('--boxL', Math.max(0, dr.left - (vL - DOCK_PAD)).toFixed(1) + 'px');
-    dock.style.setProperty('--boxR', Math.max(0, (vR + DOCK_PAD) - dr.right).toFixed(1) + 'px');
   });
   dock.addEventListener('mouseleave', rest);
 }
