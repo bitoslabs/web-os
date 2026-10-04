@@ -25,6 +25,12 @@ export function applySessionDefaults(d) {
   if (d.accentHex == null) d.accentHex = '#8b5cf6';
   if (d.theme == null) d.theme = 'dark';
   if (d.pet == null) d.pet = petname(d.npub || '');
+  if (d.name == null) d.name = '';
+  if (d.bio == null) d.bio = '';
+  if (d.avatar == null) d.avatar = '';
+  if (d.nip05 == null) d.nip05 = '';
+  if (d.website == null) d.website = '';
+  if (d.lud16 == null) d.lud16 = '';
   if (d.fs == null) d.fs = d.big === true ? 1.15 : 1;
   d.big = d.fs > 1;
   if (d.motion == null) d.motion = false;

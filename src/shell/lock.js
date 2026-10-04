@@ -17,7 +17,12 @@ export function lockFlow(unlock) {
       <span class="pname">${esc(store.d.pet)}</span>
       <span class="hintlk">press enter or click to log in</span></div>`);
   lk.append(card);
-  drawIdenticon(card.querySelector('canvas'), store.d.npub);
+  const cv = card.querySelector('canvas');
+  if (store.d.avatar) {
+    const img = document.createElement('img');
+    img.src = store.d.avatar; img.alt = ''; img.width = 84; img.height = 84;
+    cv.replaceWith(img);
+  } else drawIdenticon(cv, store.d.npub);
 
   const timer = startLockClock(card);
   let done = false;
