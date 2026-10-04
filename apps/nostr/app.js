@@ -18,10 +18,10 @@ function evNode(ev) {
   const bd = ev.kind === 9735 ? `zap · ${ev.amt} sats → @${esc(ev.author)}`
     : ev.kind === 1 ? esc(ev.text) : `<span class="c-dim">${esc(ev.text || '')}</span>`;
   n.innerHTML = `<div class="evh">${kb}<span class="an">${ev.me ? 'you' : esc(ev.author)}</span>
-    <span class="np c-dim">${ev.me ? trunc(store.d.npub) : 'npub1···'}</span><time data-ts="${ev.ts}">${age(ev.ts)}</time></div>
+    <span class="np c-dim">${ev.me ? trunc(store.d.npub) : 'npub1···'}</span><time data-ts="${ev.ts}" title="${new Date(ev.ts).toLocaleString()}">${age(ev.ts)}</time></div>
     <div class="evb">${bd}</div>
     <div class="evf">${ev.kind === 1 ? `<button class="zb" data-zap title="zap 21 sats">${BOLTICON(10)}<span>zap 21</span></button>` : ''}
-    <span class="c-dim" style="font-size:10px">via ${ev.relay}</span></div>`;
+    <span class="c-dim" style="font-size:10px">via ${esc(ev.relay)}</span></div>`;
   const z = n.querySelector('[data-zap]');
   if (z) z.onclick = () => {
     store.d.satsOut += 21; store.save(); mark('zap'); flashSats();
@@ -32,30 +32,136 @@ function evNode(ev) {
 }
 
 registerApp('nostr', {
-  title: 'nostr', icon: 'bolt', sub: 'identity · relays · feed', w: 820, h: 560,
+  title: 'nostr', icon: 'bolt', sub: 'identity · relays · feed', w: 860, h: 580,
   mount(body, win) {
-    body.innerHTML = `<div class="no">
-      <div class="no-id"><canvas width="50" height="50"></canvas>
-        <div class="who"><input class="pet" value="${esc(store.d.pet)}" spellcheck="false" maxlength="32" title="your handle — press enter to save">
-        <button class="key" data-copy="${store.d.npub}" title="copy full npub">${icon('copy', 11)}<span>${trunc(store.d.npub)}</span></button>
-        <div class="secrow"><span class="secmask">nsec1····························</span>
-          <button class="btn ghost sm" data-sec>show secret</button></div></div>
-        <div style="margin-left:auto;text-align:right">
-          <div class="lbl">zap balance</div>
-          <div class="mono-dim" data-bal style="font:600 12px var(--fm);color:var(--ink)"></div>
-          <div class="mono-dim" style="margin-top:4px">prototype keys · keysvc pending</div></div></div>
-      <div class="no-grid"><div class="no-rel"><span class="lbl">relays — wss</span><div data-rls></div></div>
-      <div class="no-feed"><div id="feed"></div>
-        <div class="no-comp"><input data-post placeholder="type a note — enter publishes" maxlength="140">
+    const SECTIONS = [
+      { id: 'feed', name: 'feed', icon: 'list', sub: 'kind:1 notes and zaps from your relays' },
+      { id: 'relays', name: 'relays', icon: 'ext', sub: 'wss peers — join one to filter the feed' },
+      { id: 'identity', name: 'identity', icon: 'bolt', sub: 'prototype keys · keysvc pending' },
+    ];
+    let cur = 'feed';
+
+    /* ---------- shell: sidebar + detail, like Settings ---------- */
+    body.innerHTML = `<div class="set-shell no-shell">
+      <aside class="set-side no-side">
+        <div class="set-prof no-prof" data-prof title="open identity">
+          <div class="av av-card"><canvas width="38" height="38"></canvas></div>
+          <div><div class="pn" data-prof-name>${esc(store.d.pet)}</div><div class="pk">${esc(trunc(store.d.npub))}</div></div>
+        </div>
+        <div class="set-list" data-nav></div>
+        <div class="no-bal">
+          <span class="lbl">zap balance</span>
+          <div class="no-balv" data-bal></div>
+        </div>
+      </aside>
+      <section class="set-detail no-main">
+        <div class="set-h"><h1 data-h>feed</h1><div class="sub" data-sub></div></div>
+        <div class="no-view" data-view></div>
+      </section>
+    </div>`;
+    drawIdenticon(body.querySelector('.no-prof canvas'), store.d.npub);
+
+    /* ---------- views ---------- */
+    const view = body.querySelector('[data-view]');
+    const feedView = el('div', 'no-feed');
+    feedView.innerHTML = `<div id="feed"></div>
+      <div class="no-comp">
+        <input data-post placeholder="type a note — enter publishes" maxlength="140" aria-label="compose a note">
         <span class="cc" data-cc>140</span>
-        <button class="btn pri sm" data-send>post</button></div></div></div></div>`;
-    drawIdenticon(body.querySelector('canvas'), store.d.npub);
-    const feed = body.querySelector('#feed'), rls = body.querySelector('[data-rls]');
-    body.querySelector('.pet').onchange = e => {
-      const v = e.target.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-      if (v) { store.d.pet = v; store.save(); toast('you are now known as <b>' + esc(v) + '</b>', 'ok'); }
+        <button class="btn pri sm" data-send>post</button>
+      </div>`;
+    const relayView = el('div', 'no-pane set-body set');
+    relayView.innerHTML = `<div class="grpbox"><span class="lbl">relays — wss</span><div data-rls class="no-rls"></div></div>
+      <p class="note">Relay traffic is simulated in this preview. Joining or leaving a relay changes how many peers a note is published to; the feed pauses while all relays are down.</p>`;
+    const idView = el('div', 'no-pane set-body set');
+    idView.innerHTML = `<div class="grpbox"><span class="lbl">profile</span>
+        <div class="row"><div class="rt"><span class="lbl">handle</span>your petname — press enter to save</div>
+          <input data-handle value="${esc(store.d.pet)}" spellcheck="false" maxlength="32" aria-label="your handle"></div>
+        <div class="row"><div class="rt"><span class="lbl">public key</span>share freely — click to copy</div>
+          <button class="key" data-copy="${esc(store.d.npub)}" title="copy full npub">${icon('copy', 11)}<span>${esc(trunc(store.d.npub))}</span></button></div>
+        <div class="row"><div class="rt"><span class="lbl">secret key</span>never share — guard it like cash</div>
+          <div class="secwrap"><span class="secmask">nsec1····························</span>
+            <button class="btn ghost sm" data-sec>show secret</button></div></div>
+      </div>
+      <div class="grpbox"><span class="lbl">zap balance</span>
+        <div class="row"><div class="rt"><span class="lbl">received</span>sats in from incoming zaps</div><span class="mono-dim" data-in>0</span></div>
+        <div class="row"><div class="rt"><span class="lbl">sent</span>sats out from zapping notes</div><span class="mono-dim" data-out>0</span></div>
+      </div>
+      <p class="note">Keys, relays, and zaps here are a <b>simulation</b> — not a production network or cryptographic service.</p>`;
+    view.append(feedView, relayView, idView);
+
+    /* ---------- navigation ---------- */
+    const nav = body.querySelector('[data-nav]');
+    nav.innerHTML = `<div class="set-cap">nostr</div>` + SECTIONS.map(s =>
+      `<button class="set-item" data-section="${s.id}"><span class="sv">${icon(s.icon, 16)}</span><b>${esc(s.name)}</b></button>`).join('');
+    nav.onclick = e => { const b = e.target.closest('[data-section]'); if (b) showSection(b.dataset.section); };
+    body.querySelector('[data-prof]').onclick = () => showSection('identity');
+
+    function syncHeader() {
+      const s = SECTIONS.find(x => x.id === cur);
+      let sub = s.sub;
+      if (cur === 'relays') sub += ` · ${SIM.relays.filter(r => r.on).length}/${SIM.relays.length} up`;
+      body.querySelector('[data-h]').textContent = s.name;
+      body.querySelector('[data-sub]').textContent = sub;
+    }
+    function showSection(id) {
+      cur = id;
+      feedView.classList.toggle('hide', id !== 'feed');
+      relayView.classList.toggle('hide', id !== 'relays');
+      idView.classList.toggle('hide', id !== 'identity');
+      body.querySelectorAll('.set-item').forEach(b => b.classList.toggle('on', b.dataset.section === id));
+      body.querySelector('[data-prof]').classList.toggle('on', id === 'identity');
+      syncHeader();
+    }
+
+    /* ---------- feed ---------- */
+    const feed = feedView.querySelector('#feed'), rls = relayView.querySelector('[data-rls]');
+    function addEvent(ev) {
+      feed.prepend(evNode(ev));
+      while (feed.children.length > 40) feed.lastChild.remove(); renderBal();
+    }
+    function renderBal() {
+      const f = n => n.toLocaleString();
+      body.querySelector('[data-bal]').innerHTML =
+        `<span class="c-acc">${f(store.d.satsIn)}</span> in · <span class="c-acc">${f(store.d.satsOut)}</span> out`;
+      const i = idView.querySelector('[data-in]'), o = idView.querySelector('[data-out]');
+      if (i) i.textContent = f(store.d.satsIn);
+      if (o) o.textContent = f(store.d.satsOut);
+    }
+
+    /* ---------- relays ---------- */
+    function renderRelays() {
+      rls.innerHTML = '';
+      const emp = feed.querySelector('.empty');
+      const allOff = SIM.relays.every(r => !r.on);
+      if (allOff && !emp) feed.prepend(el('div', 'ev empty',
+        'all relays offline — join one from the relays pane'));
+      else if (!allOff && emp) emp.remove();
+      SIM.relays.forEach(r => {
+        const row = el('div', 'rl',
+          `<span class="dot ${r.on ? 'on' : ''}"></span><span class="rlh">${r.host}</span>
+         <span class="ping">${r.on ? r.ping + 'ms' : 'down'}</span>
+         <button class="btn ghost sm">${r.on ? 'leave' : 'join'}</button>`);
+        row.querySelector('button').onclick = () => {
+          r.on = !r.on; updatePills(); renderRelays();
+          toast(`relay <b>${r.host}</b> ${r.on ? 'joined' : 'left'}`, r.on ? 'ok' : 'info');
+        };
+        rls.append(row);
+      });
+      syncHeader();
+    }
+
+    /* ---------- identity ---------- */
+    const handle = idView.querySelector('[data-handle]');
+    handle.onchange = () => {
+      const v = handle.value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (v) {
+        store.d.pet = v; store.save();
+        handle.value = v; body.querySelector('[data-prof-name]').textContent = v;
+        toast('you are now known as <b>' + esc(v) + '</b>', 'ok');
+      } else handle.value = store.d.pet;
     };
-    const secbtn = body.querySelector('[data-sec]'), secmask = body.querySelector('.secmask');
+    const secbtn = idView.querySelector('[data-sec]'), secmask = idView.querySelector('.secmask');
     let secT = null, secCd = null;
     secbtn.onclick = () => {
       if (secT) { clearTimeout(secT); clearInterval(secCd); secT = null; }
@@ -69,49 +175,30 @@ registerApp('nostr', {
         secT = setTimeout(() => secbtn.click(), 10000);
       }
     };
-    function renderRelays() {
-      rls.innerHTML = '';
-      const emp = feed.querySelector('.empty');
-      const allOff = SIM.relays.every(r => !r.on);
-      if (allOff && !emp) feed.prepend(el('div', 'ev empty',
-        'all relays offline — join one from the list on the left'));
-      else if (!allOff && emp) emp.remove();
-      SIM.relays.forEach(r => {
-        const row = el('div', 'rl',
-          `<span class="dot ${r.on ? 'on' : ''}"></span><span class="rlh">${r.host}</span>
-         <span class="ping">${r.on ? r.ping + 'ms' : 'down'}</span>
-         <button class="btn ghost sm">${r.on ? 'leave' : 'join'}</button>`);
-        row.querySelector('button').onclick = () => {
-          r.on = !r.on; updatePills(); renderRelays();
-          toast(`relay <b>${r.host}</b> ${r.on ? 'joined' : 'left'}`, r.on ? 'ok' : 'info');
-        };
-        rls.append(row);
-      });
-    }
-    function addEvent(ev) {
-      feed.prepend(evNode(ev));
-      while (feed.children.length > 40) feed.lastChild.remove(); renderBal();
-    }
-    function renderBal() {
-      body.querySelector('[data-bal]').innerHTML =
-        `<span class="c-acc">${store.d.satsIn.toLocaleString()}</span> in · <span class="c-acc">${store.d.satsOut.toLocaleString()}</span> out`;
-    }
-    SIM.events.slice(0, 40).forEach(e => feed.append(evNode(e)));
-    renderRelays(); renderBal(); wireComp(body);
-    win.addEvent = addEvent; win.renderRelays = renderRelays; win.renderBal = renderBal;
-    const send = body.querySelector('[data-send]'), post = body.querySelector('[data-post]'),
-      cc = body.querySelector('[data-cc]');
+
+    /* ---------- composer ---------- */
+    const send = feedView.querySelector('[data-send]'), post = feedView.querySelector('[data-post]'),
+      cc = feedView.querySelector('[data-cc]');
     post.oninput = () => {
       cc.textContent = 140 - post.value.length;
       cc.classList.toggle('low', post.value.length > 120);
     };
     function doSend() {
-      const v = post.value.trim(); if (!v) return; post.value = ''; cc.textContent = '140';
+      const v = post.value.trim(); if (!v) return;
+      const up = SIM.relays.filter(r => r.on).length;
+      if (!up) { toast('no relays online — join one before posting', 'err'); return; }
+      post.value = ''; cc.textContent = '140'; cc.classList.remove('low');
       const ev = { ts: Date.now(), kind: 1, me: true, author: store.d.pet, relay: 'you', text: v };
       SIM.events.unshift(ev); addEvent(ev); mark('note');
-      toast(`published to <b>${SIM.relays.filter(r => r.on).length}</b> relays`, 'ok');
+      toast(`published to <b>${up}</b> relay${up === 1 ? '' : 's'}`, 'ok');
     }
-    send.onclick = doSend; post.onkeydown = e => { if (e.key === 'Enter') doSend(); };
+    send.onclick = doSend;
+    post.onkeydown = e => { if (e.key === 'Enter') doSend(); };
+
+    /* ---------- seed + timers ---------- */
+    SIM.events.slice(0, 40).forEach(e => feed.append(evNode(e)));
+    renderRelays(); renderBal(); wireComp(body); showSection('feed');
+    win.addEvent = addEvent; win.renderRelays = renderRelays; win.renderBal = renderBal;
     const ti = setInterval(() => {
       rls.querySelectorAll('.rl').forEach((row, i) => {
         const r = SIM.relays[i]; if (r) row.querySelector('.ping').textContent = r.on ? r.ping + 'ms' : 'down';
