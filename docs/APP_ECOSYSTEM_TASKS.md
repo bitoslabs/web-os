@@ -1,6 +1,6 @@
 # App ecosystem implementation tasks
 
-Status: planning backlog, checked against `os-web` source on 2026-10-04. No task below is complete unless marked `Done`. This is the execution checklist for the [App Store plan](APP_STORE_PLAN.md), [data model](ECOSYSTEM_DATA_MODEL.md), and [developer guide](APP_DEVELOPER_GUIDE.md).
+Status: planning backlog, checked against `os-web` source on 2026-10-04. No task below is complete unless marked `[x]`/`Done`. This is the execution checklist for the [App Store plan](APP_STORE_PLAN.md), [data model](ECOSYSTEM_DATA_MODEL.md), [package format](PACKAGE_FORMAT.md), and [developer guide](APP_DEVELOPER_GUIDE.md).
 
 ## Current feature audit
 
@@ -9,15 +9,19 @@ Status: planning backlog, checked against `os-web` source on 2026-10-04. No task
 | List and search built-in apps | Done | `src/apps.js` imports a fixed list; `src/core/registry.js` stores it; Launchpad and Spotlight read `APPS` |
 | Launch and close built-in windows | Done | `src/shell/window-manager.js` opens and closes registered `mount()` functions |
 | Pin built-ins in dock and desktop | Done | Static `SHELL_APPS` in `src/shell/launchers.js` |
-| List installed third-party apps | Missing | No persisted installation records or runtime hydration |
-| Install from local file or catalog | Missing | No package parser, validator, package store, or installer |
-| Update, rollback, uninstall | Missing | Registry has no removal/change API; no package lifecycle or app-data policy |
-| Manage apps and permissions in UI | Missing | No Store or installed-app management screen |
-| Isolate installed code | Missing | Built-in modules execute in the trusted shell page |
+| List installed third-party apps | Partial | `src/core/ecosystem.js` persists installs; `src/shell/installed-apps.js` hydrates Launchpad/Spotlight |
+| Install from local file or catalog | Partial | `src/core/installer.js` preview/install over descriptor or validated `.bitos-app` (per-file and package SHA-256); package bytes persist in IndexedDB (`src/core/idb.js`) with a hydration/migration pass; no signed release binding yet (APP-03, APP-06) |
+| Update, rollback, uninstall | Partial | `updateInstall`, `rollbackInstall`, and `uninstall` close the app's running windows; uninstall keeps or deletes app data separately; Updates offers update-all; no staged package staging/verification yet |
+| Manage apps and permissions in UI | Partial | `apps/store/` Browse/Installed/Updates, permission grants, keyboard-operable list, and app-data usage; install/update/uninstall offer a follow-up **open** |
+| Isolate installed code | Partial | `src/shell/app-frame.js` runs an app in a `sandbox="allow-scripts"` iframe (opaque origin) with restrictive CSP and a versioned `postMessage` host API; no signed package bytes or `app.storage`/`app.window` SDK release (APP-02, APP-06) |
 | Live Nostr submission/discovery | Missing | `apps/nostr/app.js` is explicitly simulated; no signed listing reader or publisher tooling |
 | Booted OS install support | Outside this repo | Requires work in sibling `bitos/os` launcher, broker, and persistent storage |
 
-`make check` currently verifies JavaScript syntax and relative imports. It does not test package integrity, isolation, persistence, or app lifecycle.
+`make check` verifies JavaScript syntax and relative imports; `make check-package` runs the package-format fixtures. Neither tests isolation, persistence, or the app lifecycle end to end.
+
+### Implemented in the Store preview
+
+The app-management layer, package format, and a preview runtime landed: `src/core/ecosystem.js` (`bitos.apps.v1` records for installs, grants, app data, and a digest-keyed package cache), `src/core/package.js` + `scripts/pack.mjs` (format v1 validator and pack tool), `src/core/appdoc.js` (inlines a package's CSS/JS/assets into one sandboxed document), `src/core/installer.js` (preview/install/list/get/remove service over the package validator and ecosystem records), `src/core/idb.js` (IndexedDB package-byte store with a hydrated in-memory mirror and legacy localStorage migration), `apps/store/` (Browse, Installed, Updates, local descriptor and `.bitos-app` import, permission grants, update, rollback, uninstall, app-data choice), `src/data/store-catalog.js` (static snapshot with a bundled runnable sample), `src/shell/installed-apps.js` (installed apps in Launchpad/Spotlight), and `src/shell/app-frame.js` (sandboxed iframe, CSP, and the `v1` host API enforcing a live grant on every call). Records survive reload and are exposed through `onEcosystemChange`. **Still open:** signed release binding and catalog approval (APP-12/14), IndexedDB for install/grant/app-data metadata and full migrations (APP-03), staged package verification/rollback bytes (APP-06/07), device parity (APP-15), and Nostr (APP-13/14). Audit rows are marked `Partial` where the lifecycle works without signed bytes or device storage.
 
 ## Target user flows
 
@@ -34,8 +38,8 @@ Each task should be a separate reviewable change. Keep the acceptance checks wit
 
 ### Foundation
 
-- [ ] **APP-01 — Freeze package format and identity.** Choose archive type, canonical manifest serialization, hash encoding, size/file/path limits, ID and version rules, and error codes. Specify how local-file imports get a publisher identity or a clearly separate local identity. Update `ECOSYSTEM_DATA_MODEL.md`, starter manifest, and developer guide. **Done when:** a valid sample package and malformed fixtures have deterministic expected results.
-- [ ] **APP-02 — Build package validator and pack tool.** Add a tool under `scripts/` and a browser validator module under `src/core/`; enforce archive and file hashes, exact manifest file set, path confinement, compatibility, and resource limits. The same fixtures must pass or fail in both contexts. **Depends on:** APP-01. **Done when:** corrupt bytes, traversal, duplicate paths, symlinks, missing files, unlisted files, oversized packages, and manifest mismatches are rejected.
+- [x] **APP-01 — Freeze package format and identity.** Choose archive type, canonical manifest serialization, hash encoding, size/file/path limits, ID and version rules, and error codes. Specify how local-file imports get a publisher identity or a clearly separate local identity. Update `ECOSYSTEM_DATA_MODEL.md`, starter manifest, and developer guide. **Done:** format v1 is documented in [PACKAGE_FORMAT.md](PACKAGE_FORMAT.md); local imports use `publisherKey: "local"` as a clearly separate unverified identity.
+- [x] **APP-02 — Build package validator and pack tool.** Add a tool under `scripts/` and a browser validator module under `src/core/`; enforce archive and file hashes, exact manifest file set, path confinement, compatibility, and resource limits. The same fixtures must pass or fail in both contexts. **Depends on:** APP-01. **Done:** `src/core/package.js` validates and hashes, `scripts/pack.mjs` builds a `.bitos-app`, and `scripts/test-package.mjs` asserts the deterministic fixtures (`make check-package`). Symlinks and duplicate entries are structurally impossible in the JSON container; case/NFC path collisions are rejected.
 - [ ] **APP-03 — Persist ecosystem records.** Implement versioned IndexedDB stores for releases, packages, installations, grants, and app data from `ECOSYSTEM_DATA_MODEL.md`. Include migrations, quota errors, and recovery from interrupted writes. **Depends on:** APP-01. **Done when:** records survive reload and a failed staged install leaves the previous ready state intact.
 - [ ] **APP-04 — Separate installed-app registry from built-ins.** Keep `registerApp()` for trusted built-ins. Add a registry API that hydrates only ready installations, uses compound publisher/app identity internally, and emits change events. Define a stable launcher key so duplicate app IDs from different publishers do not collide with each other or built-ins. **Depends on:** APP-03. **Done when:** two publishers can install the same app ID, both appear separately, and removal clears the correct entry.
 

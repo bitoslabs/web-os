@@ -47,9 +47,9 @@ export function syncCC() {
   const fs = fontScale();
   ccEl.querySelectorAll('.seg button[data-fs]').forEach(b => b.classList.toggle('on', parseFloat(b.dataset.fs) === fs));
   ccEl.querySelector('[data-ccwall]').classList.toggle('on', store.d.wall);
-  const up = SIM.relays.filter(r => r.on).length;
+  const up = SIM.up;
   ccEl.querySelector('[data-ccrel]').innerHTML =
-    `<span class="dotp" style="background:${up ? 'var(--ok)' : 'var(--err)'}"></span>${up}/4`;
+    `<span class="dotp" style="background:${up ? 'var(--ok)' : 'var(--err)'}"></span>${up}/${SIM.relays.length}`;
   ccEl.querySelector('[data-ccsats]').textContent = store.d.satsIn.toLocaleString() + ' sats';
 }
 export function openCC(v) {

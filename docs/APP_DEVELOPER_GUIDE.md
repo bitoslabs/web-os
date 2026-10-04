@@ -1,13 +1,13 @@
 # Build an app for Bitos
 
-Status: developer proposal. Built-in apps run now; third-party package installation, Store APIs, and Nostr publishing tools are planned in [App Store plan](APP_STORE_PLAN.md). This guide gives developers a target without implying that the installer already works.
+Status: developer proposal. Built-in apps run now. A preview Store manages install, update, rollback, and uninstall records and runs a single-document app in a sandboxed iframe with a versioned host API (`src/shell/app-frame.js`); it does not download signed package bytes or load multi-file packages, and Nostr publishing tools are planned in [App Store plan](APP_STORE_PLAN.md). This guide gives developers a target without implying that the full installer works.
 
 ## Choose an app type
 
 | Type | Who uses it | Entry point | Runtime today |
 | --- | --- | --- | --- |
 | Built-in program | Bitos maintainers and trusted contributors | `apps/<id>/app.js` calls `registerApp()` | Working in `os-web` |
-| Installable app | Independent developers and Store publishers | Packaged `index.html` plus `app.json` | Browser preview only; installer planned |
+| Installable app | Independent developers and Store publishers | Packaged `index.html` plus `app.json` | Packed and validated by `make pack`; runs in the sandboxed runtime with files inlined |
 
 Built-in apps share shell code and can use internal modules. Installable apps are ordinary offline web apps in isolated windows. They must not import `src/core`, call `registerApp()`, depend on shell CSS, or access `window.__bitosNative`. The Store itself will be built in.
 
@@ -18,9 +18,9 @@ Built-in apps share shell code and can use internal modules. Installable apps ar
 3. Build the interface with local HTML, CSS, JS, and assets. Use relative paths. Avoid CDN scripts, remote fonts, external imports, and inline event handlers. The initial package policy aims for offline operation.
 4. Run `make serve` from the repo root and open `http://127.0.0.1:8000/templates/installable-app/` to preview the untouched starter. For a copied folder, serve and open that folder instead.
 5. Check keyboard access, readable contrast, narrow window layout, startup without network, and clean behavior after reload. Test errors and empty states for real apps.
-6. Compute SHA-256 for every packaged file except `app.json`; put each lowercase hex digest after `sha256-` in `files`. For example, `shasum -a 256 index.html` on macOS or `sha256sum index.html` on Linux. Include exactly the files named by the manifest in the archive.
+6. Build the package with `make pack SRC=<app-folder>` (or `node scripts/pack.mjs <app-folder>`). The tool reads `app.json`, hashes every listed file, writes `<id>-<version>.bitos-app`, and validates the result before writing. The placeholder digests in the starter are replaced automatically. Validate fixtures with `make check-package`.
 
-Package validation and archiving commands will be added when the format is frozen. Do not publish a package based only on the placeholder hashes in the starter.
+The [package format](PACKAGE_FORMAT.md) is frozen for v1 (canonical JSON container, SHA-256 per file and per package). Publishing still needs signed release and listing events (APP-13/14).
 
 ## Manifest and identity
 

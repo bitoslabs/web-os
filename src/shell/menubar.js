@@ -53,8 +53,9 @@ export function startMenubarClock(clock) {
 
 export function updatePills() {
   if (!relaySt || !satsSt) return;
-  const up = SIM.relays.filter(r => r.on).length;
-  relaySt.innerHTML = `<span class="dotp" style="background:${up ? 'var(--ok)' : 'var(--err)'}"></span>${up}/4`;
+  const up = SIM.up;
+  relaySt.title = `nostr relays — ${SIM.rRelays.length} read · ${SIM.wRelays.length} write · click to manage`;
+  relaySt.innerHTML = `<span class="dotp" style="background:${up ? 'var(--ok)' : 'var(--err)'}"></span>${up}/${SIM.relays.length}`;
   satsSt.innerHTML = `${BOLTICON(11)}<span>${store.d.satsIn.toLocaleString()}</span>`;
   syncCC();
 }

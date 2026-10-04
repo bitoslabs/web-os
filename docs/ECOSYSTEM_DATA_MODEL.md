@@ -1,6 +1,6 @@
 # Bitos app ecosystem data model
 
-Status: proposed contract for the future installer, Store, and Nostr catalog. No database or package runtime implements this yet. Read with the [App Store plan](APP_STORE_PLAN.md) and [developer guide](APP_DEVELOPER_GUIDE.md).
+Status: proposed contract for the installer, Store, and Nostr catalog. `src/core/ecosystem.js` implements a preview-grade localStorage subset (installs, grants, app data) for `os-web`; package bytes, IndexedDB stores, and the package runtime are not implemented. Read with the [App Store plan](APP_STORE_PLAN.md) and [developer guide](APP_DEVELOPER_GUIDE.md).
 
 ## Entities and ownership
 
@@ -116,6 +116,6 @@ Use transactions for metadata changes, staging package bytes before activating a
 
 ## Still to specify before implementation
 
-- Canonical archive format, manifest serialization, hash encoding, size limits, and whether `manifestDigest` is retained.
+- Package container, manifest serialization, hash encoding, and size limits are frozen for v1 in [PACKAGE_FORMAT.md](PACKAGE_FORMAT.md); `manifestDigest` is not retained.
 - Exact Nostr JSON schemas, event size bounds, catalog signing/transport, relay policy, and publisher key migration.
 - Stable host API and permission names, quota limits, package retention, backup/export, and app data migration rules.

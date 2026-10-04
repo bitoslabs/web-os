@@ -18,7 +18,7 @@ export const WM = {
     const fresh = !!(opts && opts.fresh);
     const key = (opts && opts.key) || (fresh ? id + '#' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : id);
     if (!fresh && this.wins.has(key)) { const w = this.wins.get(key); if (w.min) this.restore(w); else this.focus(w); return w; }
-    const a = APPS[id];
+    const a = (opts && opts.def) || APPS[id];
     if (!a) { toast('program is unavailable: ' + esc(id), 'err'); return null; }
     const z = uiZoom();
     const d = deskEl.getBoundingClientRect();

@@ -44,6 +44,11 @@ os-web/
       native.js       window.__bitosNative bridge (absent in the browser)
       system.js       live/simulated system info and boot state
       registry.js     APPS + registerApp()
+      ecosystem.js    installs, grants, app data, package index
+      idb.js          IndexedDB package-byte store
+      package.js      package-format v1 validation and hashing
+      appdoc.js       inline a package's files into one document
+      installer.js    preview/install/list/get/remove service
       index.js        barrel re-export of the core
     data/             content and simulation, separated from programs
       handbook.js     HBDATA design-system sections
@@ -74,6 +79,8 @@ os-web/
     fonts/            vendored IBM Plex woff2 + fonts.css
   vendor/             vendored VanJS (classic global)
   scripts/check.mjs   structural check (syntax + import resolution)
+  scripts/pack.mjs    build a .bitos-app from a folder
+  scripts/test-package.mjs  package-format fixtures
   docs/               upstream reference docs
 ```
 
@@ -96,9 +103,11 @@ os-web/
 3. Add the id to `BUILT_IN_APPS` in `src/apps.js`.
 4. Add it to `SHELL_APPS` in `src/shell/launchers.js` only if it should be pinned.
 
-For installable third-party apps, start with the [developer guide](docs/APP_DEVELOPER_GUIDE.md) and [app template](templates/installable-app/README.md). The [App Store plan](docs/APP_STORE_PLAN.md) covers installation and Nostr submissions, and the [ecosystem data model](docs/ECOSYSTEM_DATA_MODEL.md) defines the records. The steps above are for trusted built-in apps only.
+For installable third-party apps, start with the [developer guide](docs/APP_DEVELOPER_GUIDE.md) and [app template](templates/installable-app/README.md). The [package format](docs/PACKAGE_FORMAT.md) is frozen for v1 (`make pack`, `make check-package`); the [App Store plan](docs/APP_STORE_PLAN.md) covers installation and Nostr submissions, and the [ecosystem data model](docs/ECOSYSTEM_DATA_MODEL.md) defines the records. The steps above are for trusted built-in apps only.
 
 The [app ecosystem tasks](docs/APP_ECOSYSTEM_TASKS.md) audit current support and list implementation work for app management, install, update, uninstall, catalog, and device integration.
+
+A preview Store ships at `apps/store/`: it browses a static catalog, imports a local descriptor or a validated `.bitos-app` package, and manages installed apps (permissions, update, rollback, uninstall, app-data choice) with records in `src/core/ecosystem.js`. Packages are checked by `src/core/package.js`, cached by digest, and inlined into one sandboxed document (`src/core/appdoc.js`, `src/shell/app-frame.js`) with a versioned host API and per-call permission checks. Signed release binding, IndexedDB storage, and Nostr are still open work.
 
 ## Native boundary
 

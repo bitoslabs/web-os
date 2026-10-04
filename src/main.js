@@ -5,8 +5,11 @@
    This is the module referenced by index.html; nothing else starts the UI.
    ========================================================================== */
 import { loadApps } from './apps.js';
+import { hydratePackages } from './core/ecosystem.js';
 import { runBoot, showRecovery } from './boot/boot.js';
 
-loadApps()
+/* Register built-ins and load persisted package bytes before the desktop
+ * renders, so installed apps are launchable on first paint. */
+Promise.all([loadApps(), hydratePackages()])
   .then(() => runBoot())
   .catch(error => showRecovery('Could not start Bitos', error));

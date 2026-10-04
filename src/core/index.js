@@ -11,3 +11,6 @@ export * from './store.js';
 export * from './native.js';
 export * from './system.js';
 export * from './registry.js';
+export * from './ecosystem.js';
+export * from './package.js';
+export * from './appdoc.js';

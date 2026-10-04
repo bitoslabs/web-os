@@ -12,6 +12,7 @@ export const BUILT_IN_APPS = [
   'handbook',
   'nostr',
   'settings',
+  'store',
   'system-monitor',
   'about',
   'get-started',

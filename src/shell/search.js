@@ -1,8 +1,9 @@
 'use strict';
 /* OS shell module: searches registered local apps and trusted Handbook content.
  * Remote results must never inherit privileged shell actions. */
-import { $, el, esc, icon, copyText, store, APPS } from '../core/index.js';
+import { $, el, esc, icon, copyText, store, APPS, onEcosystemChange } from '../core/index.js';
 import { WM } from './window-manager.js';
+import { installedLaunchEntries, openInstalled } from './installed-apps.js';
 import { HBDATA } from '../data/handbook.js';
 import { setAccent, ACCENT_SWATCHES } from './menubar.js';
 import { openCC, syncCC } from './control-center.js';
@@ -15,6 +16,7 @@ export let spotRes = [], spotSel = 0;
 export function spotIndex() {
   const ix = [];
   Object.entries(APPS).forEach(([id, a]) => ix.push({ k: 'app', t: a.title, s: a.sub || 'app', ic: a.icon, fn: () => WM.open(id) }));
+  installedLaunchEntries().forEach(e => ix.push({ k: 'app', t: e.def.title, s: e.def.sub || 'installed', ic: e.def.icon, fn: () => openInstalled(e.key) }));
   HBDATA.forEach(s => ix.push({
     k: 'doc', t: s.t, s: 'handbook · ' + s.n, ic: 'book',
     fn: () => { const w = WM.open('handbook'); setTimeout(() => w.goto && w.goto(s.n), 40); }
@@ -68,3 +70,9 @@ export function openSpot() {
   const inp = $('#spot input'); inp.value = ''; renderSpot(''); setTimeout(() => inp.focus(), 20);
 }
 export function closeSpot() { $('#spot').classList.add('hide'); }
+
+/* Keep an open spotlight in sync when installs change underneath it. */
+onEcosystemChange(() => {
+  const s = $('#spot');
+  if (s && !s.classList.contains('hide')) renderSpot($('#spot input').value);
+});

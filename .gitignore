@@ -30,6 +30,9 @@
 *.fd
 *.log
 
+# Packaged apps built by `make pack` (publish them as release artifacts, not commits)
+*.bitos-app
+
 # Temporary files and language caches
 /tmp/
 __pycache__/

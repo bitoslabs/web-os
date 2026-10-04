@@ -90,17 +90,20 @@ function termCommands(api, ctx) {
       p('<span class="c-warn">[ !! ] identity rotated — old key is gone</span>'); p('npub: <span class="c-acc">' + store.d.npub + '</span>');
     }
     else {
-      SIM.relays.forEach(r => p(`${r.on ? '<span class="c-ok">up</span>  ' : '<span class="c-dim">off</span> '} ${r.host.padEnd(20)} <span class="c-dim">${r.on ? r.ping + 'ms' : '—'}</span>`));
-      p(`<span class="c-dim">${SIM.relays.filter(r => r.on).length}/4 up · ${store.d.seen} events seen · npub ${trunc(store.d.npub)}</span>`);
+      SIM.relays.forEach(r => {
+        const tag = [r.read && 'r', r.write && 'w', r.primary && '*'].filter(Boolean).join('') || '—';
+        p(`${r.on ? '<span class="c-ok">up</span>  ' : '<span class="c-dim">off</span> '} ${r.host.padEnd(20)} <span class="c-dim">${r.on ? r.ping + 'ms' : '—'}</span>  <span class="c-acc">${tag}</span> <span class="c-dim">read/write/primary</span>`);
+      });
+      p(`<span class="c-dim">${SIM.up}/${SIM.relays.length} up · ${SIM.rRelays.length} read · ${SIM.wRelays.length} write · ${store.d.seen} events seen · npub ${trunc(store.d.npub)}</span>`);
     }
   }];
   C.bitfetch = ['system summary', () => {
-    const up = SIM.relays.filter(r => r.on).length;
+    const up = SIM.up;
     const s = Math.floor((Date.now() - sessionStart) / 1000);
     const info = [['user', store.d.pet + '@' + store.d.host], ['os', 'bitos 0.1.0 (photon) ' + (SYSINFO ? SYSINFO.cpuArch : 'x86_64 · simulated')],
     ['kernel', '6.6.x-bitos'], ['wm', 'bitowm (html · aqua)'], ['shell', 'bsh 0.1'],
     ['ui', 'wpe-webkit · plex mono'], ['key', trunc(store.d.npub)],
-    ['relays', up + '/4 up'], ['zaps', store.d.satsIn.toLocaleString() + ' sats in'],
+    ['relays', up + '/' + SIM.relays.length + ' up'], ['zaps', store.d.satsIn.toLocaleString() + ' sats in'],
     ['uptime', Math.floor(s / 60) + 'm' + (s % 60) + 's']];
     const bw = Math.max(...BOLT.map(l => l.length));
     for (let i = 0; i < Math.max(BOLT.length, info.length); i++) {

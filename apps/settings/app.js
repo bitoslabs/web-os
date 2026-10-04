@@ -1,8 +1,8 @@
 /* Built-in app: Settings. macOS-style sidebar + search + detail. Preview state
  * persists to localStorage; device backlight, audio, network, and power actions
  * require the native services in docs/NATIVE_API.md before they do anything. */
-import { registerApp, store, esc, icon, trunc, wireComp, toast, dialog, native, clamp, SYSINFO, drawIdenticon, genKey, petname, copyText } from '../../src/core/index.js';
-import { setAccent, syncAccentUI, ACCENT_COLORS, ACCENT_SWATCHES, accentHexOf, accentName } from '../../src/shell/menubar.js';
+import { registerApp, store, esc, el, icon, trunc, wireComp, toast, dialog, native, clamp, SYSINFO, drawIdenticon, genKey, petname, copyText } from '../../src/core/index.js';
+import { setAccent, syncAccentUI, updatePills, ACCENT_COLORS, ACCENT_SWATCHES, accentHexOf, accentName } from '../../src/shell/menubar.js';
 import { syncCC } from '../../src/shell/control-center.js';
 import { mark } from '../../src/shell/tour.js';
 import { WM } from '../../src/shell/window-manager.js';
@@ -12,7 +12,7 @@ import { SIM } from '../../src/data/sim.js';
 
 registerApp('settings', {
   title: 'settings', icon: 'sl', sub: '/var/lib/bitos', w: 820, h: 580,
-  mount(body) {
+  mount(body, win) {
     const d = store.d;
     const rel = SIM.relays.filter(r => r.on).length;
     const used = Math.min(31.4, 2.1 + d.seen * 0.012);
@@ -168,6 +168,87 @@ registerApp('settings', {
       toast('identity rotated — new npub ' + trunc(d.npub), 'ok');
     };
 
+    /* ---------- nostr relays (NIP-65 read / write / primary) ---------- */
+    const ROLE_HINT = { read: 'fetch notes from this relay', write: 'publish your notes to this relay',
+      primary: 'preferred write relay — publish here first' };
+    const relayMgr = { id: 'relaymgr', type: 'custom', noLabel: true, html:
+      `<div class="relay-mgr">
+         <div class="rm-list" data-srls></div>
+         <div class="rm-add"><input data-srnew placeholder="add relay — wss://relay.example.com" spellcheck="false" autocomplete="off" aria-label="relay url"><button class="btn sm" data-sradd>add</button></div>
+         <p class="rm-foot">read fetches notes · write publishes · primary is the preferred write relay.</p>
+       </div>`,
+      wire(root) {
+        const list = root.querySelector('[data-srls]'), inp = root.querySelector('[data-srnew]');
+        let hosts = '';
+        const summary = () => {
+          const out = body.querySelector('[data-r="relays"] .mono-dim');
+          if (out) out.textContent = SIM.up + '/' + SIM.relays.length + ' up · ' + SIM.wRelays.length + ' write';
+        };
+        const syncRow = (row, r) => {
+          row.classList.toggle('off', !r.on);
+          const st = row.querySelector('.rm-status');
+          st.classList.toggle('on', r.on); st.title = r.on ? 'connected' : 'offline';
+          row.querySelector('.rm-meta').textContent = r.on ? r.ping + ' ms' : 'offline';
+          const sw = row.querySelector('.sw2');
+          sw.classList.toggle('on', r.on); sw.setAttribute('aria-checked', r.on ? 'true' : 'false');
+          row.querySelectorAll('.rm-role').forEach(b => {
+            const on = !!r[b.dataset.role];
+            b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+        };
+        const bind = (row, r) => {
+          row.querySelector('[data-join]').onclick = () => {
+            r.on = !r.on; SIM.recompute(); SIM.persist(); updatePills(); paint(true); summary();
+            toast(`relay <b>${esc(r.host)}</b> ${r.on ? 'joined' : 'left'}`, r.on ? 'ok' : 'info');
+          };
+          row.querySelectorAll('.rm-role').forEach(b => {
+            const role = b.dataset.role; b.title = ROLE_HINT[role];
+            b.onclick = () => {
+              const val = role === 'primary' ? !r.primary : !r[role];
+              SIM.setRole(r.host, role, val); updatePills(); paint(true); summary();
+              toast(`<b>${esc(r.host)}</b> · ${role} ${val ? 'on' : 'off'}`, 'info');
+            };
+          });
+          row.querySelector('[data-drop]').onclick = () => {
+            if (!SIM.removeRelay(r.host)) return;
+            updatePills(); paint(true); summary();
+            toast(`relay <b>${esc(r.host)}</b> removed`, 'info');
+          };
+        };
+        const paint = force => {
+          const next = SIM.relays.map(r => r.host).join('|');
+          if (!force && next === hosts && list.children.length === SIM.relays.length) {
+            SIM.relays.forEach((r, i) => syncRow(list.children[i], r));
+            return;
+          }
+          hosts = next;
+          list.innerHTML = '';
+          if (!SIM.relays.length) { list.innerHTML = '<div class="rm-empty">no relays configured — add one below</div>'; return; }
+          SIM.relays.forEach(r => {
+            const roles = ['read', 'write', 'primary'].map(k =>
+              `<button class="rm-role${r[k] ? ' on' : ''}" data-role="${k}" aria-pressed="${r[k] ? 'true' : 'false'}">${k}</button>`).join('');
+            const row = el('div', 'rm-row',
+              `<span class="rm-status"></span>
+               <div class="rm-info"><span class="rm-host">${esc(r.host)}</span><span class="rm-meta"></span></div>
+               <div class="rm-roles">${roles}</div>
+               <button class="sw2" data-join role="switch" aria-label="toggle relay ${esc(r.host)}" aria-checked="false"><i></i></button>
+               <button class="rm-remove" data-drop title="remove relay" aria-label="remove relay ${esc(r.host)}">${icon('close', 11)}</button>`);
+            bind(row, r); syncRow(row, r);
+            list.append(row);
+          });
+        };
+        const add = () => {
+          const r = SIM.addRelay(inp.value);
+          if (!r) { toast('enter a valid relay host, e.g. wss://relay.example.com', 'err'); return; }
+          inp.value = ''; updatePills(); paint(true); summary(); inp.focus();
+          toast(`relay <b>${esc(r.host)}</b> added`, 'ok');
+        };
+        root.querySelector('[data-sradd]').onclick = add;
+        inp.onkeydown = e => { if (e.key === 'Enter') add(); else if (e.key === 'Escape') { inp.value = ''; inp.blur(); } };
+        paint(true); summary();
+        if (win) win.renderRelays = () => { if (document.body.contains(list)) { paint(); summary(); } };
+      } };
+
     const sections = [
       { id: 'identity', name: 'identity', icon: 'bolt', cap: 'you', groups: [
         { title: 'machine', rows: [
@@ -243,11 +324,11 @@ registerApp('settings', {
         ] },
       ] },
       { id: 'network', name: 'network', icon: 'ext', cap: 'system', groups: [
-        { rows: [
+        { title: 'network', rows: [
           TX('wifi', { label: 'wi-fi', desc: native ? 'adapter status from the network service' : 'not available in the browser preview', get: () => native ? 'checking…' : 'no adapter' }),
-          TX('relays', { label: 'nostr relays', desc: 'live preview peers', get: () => rel + '/4 up' }),
-          BT('openrel', { label: 'relay manager', desc: 'add, drop, or inspect relays', btn: 'open nostr', cls: 'sm', fn: () => WM.open('nostr') }),
+          TX('relays', { label: 'nostr relays', desc: 'live preview peers · read / write roles', get: () => rel + '/' + SIM.relays.length + ' up · ' + SIM.wRelays.length + ' write' }),
         ] },
+        { title: 'relay manager', rows: [relayMgr] },
       ] },
       { id: 'power', name: 'power', icon: 'pow', cap: 'system', groups: [
         { rows: [

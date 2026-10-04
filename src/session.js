@@ -45,6 +45,9 @@ export function applySessionDefaults(d) {
   if (d.icons == null) d.icons = true;
   if (d.host == null) d.host = 'bitos';
   ['satsIn', 'satsOut', 'seen'].forEach(k => { if (d[k] == null) d[k] = 0; });
+  /* relay roster + NIP-65 roles persist here; seed from the simulation once */
+  if (!Array.isArray(d.relays) || !d.relays.length) d.relays = SIM.snapshot();
+  SIM.hydrate(d.relays);
 }
 
 export function startOS(fresh) {

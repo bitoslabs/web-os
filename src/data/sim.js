@@ -32,14 +32,82 @@ const NOTES = ['plan9 was right about everything, we just were not ready',
   'rm -rf doubt && touch courage'];
 const ZAPS = [1, 3, 5, 7, 10, 21, 21, 21, 50, 100, 420, 1000];
 
+/* Relay roles follow NIP-65: `read` relays are queried for events, `write`
+ * relays receive published events, and `primary` is the preferred write relay
+ * (at most one). Role sets are cached in recompute() so hot paths — the event
+ * tick and publish — do not re-filter the relay list. */
+const bareHost = v => String(v || '').trim().toLowerCase()
+  .replace(/^wss?:\/\//, '').replace(/\/+$/, '');
+const ROLE_KEYS = ['read', 'write', 'primary'];
+
 export const SIM = {
-  relays: [{ host: 'relay.damus.io', on: true, ping: 38 }, { host: 'nos.lol', on: true, ping: 64 },
-    { host: 'relay.nostr.band', on: true, ping: 91 }, { host: 'purplerelay.com', on: false, ping: 0 }],
+  relays: [{ host: 'relay.damus.io', on: true, ping: 38, read: true, write: true, primary: true },
+    { host: 'nos.lol', on: true, ping: 64, read: true, write: true, primary: false },
+    { host: 'relay.nostr.band', on: true, ping: 91, read: true, write: false, primary: false },
+    { host: 'purplerelay.com', on: false, ping: 0, read: true, write: true, primary: false }],
+  rRelays: [], wRelays: [], primary: null, up: 0,
   events: [], t: null, t2: null, hits: [],
+
+  /* apply a persisted config, keeping current pings for known hosts */
+  hydrate(cfg) {
+    if (Array.isArray(cfg) && cfg.length) {
+      const known = new Map(this.relays.map(r => [r.host, r]));
+      this.relays = cfg.map(c => {
+        const base = known.get(c.host);
+        return { host: c.host, on: !!c.on, ping: base ? base.ping : 0,
+          read: c.read !== false, write: c.write !== false, primary: !!c.primary };
+      });
+    }
+    this.recompute();
+  },
+  snapshot() { return this.relays.map(r => ({ host: r.host, on: !!r.on, read: !!r.read, write: !!r.write, primary: !!r.primary })); },
+  persist() { if (store.d) { store.d.relays = this.snapshot(); store.save(); } },
+  /* rebuild the cached role sets and counts in one pass */
+  recompute() {
+    const r = [], w = []; let up = 0, primary = null;
+    for (const x of this.relays) {
+      if (!x.on) continue;
+      up++;
+      if (x.read) r.push(x);
+      if (x.write) w.push(x);
+      if (x.primary && !primary) primary = x;
+    }
+    this.rRelays = r; this.wRelays = w; this.up = up; this.primary = primary;
+  },
+  setRole(host, role, val) {
+    if (!ROLE_KEYS.includes(role)) return;
+    const r = this.relays.find(x => x.host === host); if (!r) return;
+    if (role === 'primary') {
+      this.relays.forEach(x => { x.primary = false; });
+      if (val) { r.primary = true; r.write = true; }
+    } else {
+      r[role] = !!val;
+      if (role === 'write' && !val) r.primary = false;
+    }
+    this.recompute(); this.persist();
+  },
+  addRelay(v) {
+    const host = bareHost(v);
+    if (!host || !/\./.test(host) || this.relays.some(r => r.host === host)) return null;
+    const r = { host, on: true, ping: rint(20, 120), read: true, write: true, primary: false };
+    this.relays.push(r); this.recompute(); this.persist(); return r;
+  },
+  removeRelay(host) {
+    const i = this.relays.findIndex(r => r.host === host); if (i < 0) return false;
+    this.relays.splice(i, 1); this.recompute(); this.persist(); return true;
+  },
+  /* ask any open app that renders the relay roster to repaint */
+  refreshViews() {
+    for (const id of ['nostr', 'settings']) {
+      const w = WM.wins.get(id); if (w && w.renderRelays) w.renderRelays();
+    }
+  },
+
   mk() {
     const r = Math.random();
+    const src = this.rRelays.length ? this.rRelays : this.relays.filter(x => x.on);
     const ev = {
-      ts: Date.now(), relay: pick(this.relays.filter(x => x.on)).host, me: false,
+      ts: Date.now(), relay: src.length ? pick(src).host : 'local', me: false,
       author: petname(bech32('npub', crypto.getRandomValues(new Uint8Array(8))))
     };
     if (r < .12) { ev.kind = 9735; ev.amt = pick(ZAPS); }
@@ -52,9 +120,9 @@ export const SIM = {
   start() {
     if (this.t) return;
     if (!this.events.length) this.seed();
-    setTimeout(() => toast('<b>relaysd:</b> 3/4 relays up', 'ok', { label: 'open feed', fn: () => WM.open('nostr') }), 900);
+    setTimeout(() => toast(`<b>relaysd:</b> ${this.up}/${this.relays.length} relays up`, 'ok', { label: 'open feed', fn: () => WM.open('nostr') }), 900);
     const tick = () => {
-      const up = this.relays.filter(r => r.on); if (up.length) {
+      const up = this.rRelays; if (up.length) {
         const ev = this.mk(); ev.relay = pick(up).host; this.events.unshift(ev);
         store.d.seen++; this.hits.push(Date.now());
         if (ev.kind === 9735) {
@@ -67,15 +135,14 @@ export const SIM = {
       if (Math.random() < .05) {
         const c = this.relays.filter(x => x.on && x.host !== 'relay.damus.io');
         if (c.length && Math.random() < .5) {
-          const rl = pick(c); rl.on = false; updatePills();
+          const rl = pick(c); rl.on = false; this.recompute(); this.persist(); updatePills();
           toast(`relay <b>${rl.host}</b> timed out`, 'err', {
             label: 'rejoin', fn: () => {
-              rl.on = true; updatePills();
-              const w = WM.wins.get('nostr'); w && w.renderRelays && w.renderRelays();
+              rl.on = true; SIM.recompute(); SIM.persist(); updatePills(); SIM.refreshViews();
               toast(`relay <b>${rl.host}</b> rejoined`, 'ok');
             }
           });
-          const w = WM.wins.get('nostr'); w && w.renderRelays && w.renderRelays();
+          this.refreshViews();
         }
       }
     };
@@ -83,7 +150,7 @@ export const SIM = {
     this.t = setInterval(tick, 2400 + Math.random() * 2400);
     this.t2 = setInterval(() => {
       this.relays.forEach(r => { if (r.on) r.ping = clamp(r.ping + rint(-9, 9), 18, 240); });
-      const w = WM.wins.get('nostr'); if (w && w.renderRelays) w.renderRelays();
+      this.refreshViews();
     }, 3000);
   }
 };

@@ -13,6 +13,7 @@ export const SHELL_APPS = [
   ['terminal', 'terminal', 'term'],
   ['nostr', 'nostr', 'bolt'],
   ['handbook', 'handbook', 'book'],
+  ['store', 'app store', 'down'],
   ['system-monitor', 'sysmon', 'act'],
   ['settings', 'settings', 'sl'],
   ['vanjs', 'vanjs', 'van'],

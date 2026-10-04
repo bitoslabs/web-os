@@ -3,7 +3,7 @@
  * The shared simulation state lives in src/data/sim.js. */
 import { registerApp, store, esc, el, icon, toast, BOLTICON, trunc, drawIdenticon, wireComp } from '../../src/core/index.js';
 import { WM } from '../../src/shell/window-manager.js';
-import { updatePills, flashSats } from '../../src/shell/menubar.js';
+import { flashSats } from '../../src/shell/menubar.js';
 import { mark } from '../../src/shell/tour.js';
 import { SIM } from '../../src/data/sim.js';
 
@@ -32,11 +32,10 @@ function evNode(ev) {
 }
 
 registerApp('nostr', {
-  title: 'nostr', icon: 'bolt', sub: 'identity · relays · feed', w: 860, h: 580,
+  title: 'nostr', icon: 'bolt', sub: 'identity · feed · relays via settings', w: 860, h: 580,
   mount(body, win) {
     const SECTIONS = [
       { id: 'feed', name: 'feed', icon: 'list', sub: 'kind:1 notes and zaps from your relays' },
-      { id: 'relays', name: 'relays', icon: 'ext', sub: 'wss peers — join one to filter the feed' },
       { id: 'identity', name: 'identity', icon: 'bolt', sub: 'prototype keys · keysvc pending' },
     ];
     let cur = 'feed';
@@ -70,9 +69,6 @@ registerApp('nostr', {
         <span class="cc" data-cc>140</span>
         <button class="btn pri sm" data-send>post</button>
       </div>`;
-    const relayView = el('div', 'no-pane set-body set');
-    relayView.innerHTML = `<div class="grpbox"><span class="lbl">relays — wss</span><div data-rls class="no-rls"></div></div>
-      <p class="note">Relay traffic is simulated in this preview. Joining or leaving a relay changes how many peers a note is published to; the feed pauses while all relays are down.</p>`;
     const idView = el('div', 'no-pane set-body set');
     idView.innerHTML = `<div class="grpbox"><span class="lbl">profile</span>
         <div class="row"><div class="rt"><span class="lbl">handle</span>your petname — press enter to save</div>
@@ -88,7 +84,7 @@ registerApp('nostr', {
         <div class="row"><div class="rt"><span class="lbl">sent</span>sats out from zapping notes</div><span class="mono-dim" data-out>0</span></div>
       </div>
       <p class="note">Keys, relays, and zaps here are a <b>simulation</b> — not a production network or cryptographic service.</p>`;
-    view.append(feedView, relayView, idView);
+    view.append(feedView, idView);
 
     /* ---------- navigation ---------- */
     const nav = body.querySelector('[data-nav]');
@@ -99,15 +95,12 @@ registerApp('nostr', {
 
     function syncHeader() {
       const s = SECTIONS.find(x => x.id === cur);
-      let sub = s.sub;
-      if (cur === 'relays') sub += ` · ${SIM.relays.filter(r => r.on).length}/${SIM.relays.length} up`;
       body.querySelector('[data-h]').textContent = s.name;
-      body.querySelector('[data-sub]').textContent = sub;
+      body.querySelector('[data-sub]').textContent = s.sub;
     }
     function showSection(id) {
       cur = id;
       feedView.classList.toggle('hide', id !== 'feed');
-      relayView.classList.toggle('hide', id !== 'relays');
       idView.classList.toggle('hide', id !== 'identity');
       body.querySelectorAll('.set-item').forEach(b => b.classList.toggle('on', b.dataset.section === id));
       body.querySelector('[data-prof]').classList.toggle('on', id === 'identity');
@@ -115,7 +108,7 @@ registerApp('nostr', {
     }
 
     /* ---------- feed ---------- */
-    const feed = feedView.querySelector('#feed'), rls = relayView.querySelector('[data-rls]');
+    const feed = feedView.querySelector('#feed');
     function addEvent(ev) {
       feed.prepend(evNode(ev));
       while (feed.children.length > 40) feed.lastChild.remove(); renderBal();
@@ -127,28 +120,6 @@ registerApp('nostr', {
       const i = idView.querySelector('[data-in]'), o = idView.querySelector('[data-out]');
       if (i) i.textContent = f(store.d.satsIn);
       if (o) o.textContent = f(store.d.satsOut);
-    }
-
-    /* ---------- relays ---------- */
-    function renderRelays() {
-      rls.innerHTML = '';
-      const emp = feed.querySelector('.empty');
-      const allOff = SIM.relays.every(r => !r.on);
-      if (allOff && !emp) feed.prepend(el('div', 'ev empty',
-        'all relays offline — join one from the relays pane'));
-      else if (!allOff && emp) emp.remove();
-      SIM.relays.forEach(r => {
-        const row = el('div', 'rl',
-          `<span class="dot ${r.on ? 'on' : ''}"></span><span class="rlh">${r.host}</span>
-         <span class="ping">${r.on ? r.ping + 'ms' : 'down'}</span>
-         <button class="btn ghost sm">${r.on ? 'leave' : 'join'}</button>`);
-        row.querySelector('button').onclick = () => {
-          r.on = !r.on; updatePills(); renderRelays();
-          toast(`relay <b>${r.host}</b> ${r.on ? 'joined' : 'left'}`, r.on ? 'ok' : 'info');
-        };
-        rls.append(row);
-      });
-      syncHeader();
     }
 
     /* ---------- identity ---------- */
@@ -185,28 +156,24 @@ registerApp('nostr', {
     };
     function doSend() {
       const v = post.value.trim(); if (!v) return;
-      const up = SIM.relays.filter(r => r.on).length;
-      if (!up) { toast('no relays online — join one before posting', 'err'); return; }
+      const wr = SIM.wRelays;
+      if (!wr.length) { toast('no write relays — enable write on a relay before posting', 'err'); return; }
       post.value = ''; cc.textContent = '140'; cc.classList.remove('low');
-      const ev = { ts: Date.now(), kind: 1, me: true, author: store.d.pet, relay: 'you', text: v };
+      const prim = SIM.primary && wr.includes(SIM.primary) ? SIM.primary : null;
+      const ev = { ts: Date.now(), kind: 1, me: true, author: store.d.pet, relay: (prim || wr[0]).host, text: v };
       SIM.events.unshift(ev); addEvent(ev); mark('note');
-      toast(`published to <b>${up}</b> relay${up === 1 ? '' : 's'}`, 'ok');
+      toast(`published to <b>${wr.length}</b> write relay${wr.length === 1 ? '' : 's'}${prim ? ' · primary ' + esc(prim.host) : ''}`, 'ok');
     }
     send.onclick = doSend;
     post.onkeydown = e => { if (e.key === 'Enter') doSend(); };
 
     /* ---------- seed + timers ---------- */
     SIM.events.slice(0, 40).forEach(e => feed.append(evNode(e)));
-    renderRelays(); renderBal(); wireComp(body); showSection('feed');
-    win.addEvent = addEvent; win.renderRelays = renderRelays; win.renderBal = renderBal;
-    const ti = setInterval(() => {
-      rls.querySelectorAll('.rl').forEach((row, i) => {
-        const r = SIM.relays[i]; if (r) row.querySelector('.ping').textContent = r.on ? r.ping + 'ms' : 'down';
-      });
-    }, 3000);
+    renderBal(); wireComp(body); showSection('feed');
+    win.addEvent = addEvent; win.renderBal = renderBal;
     const ti2 = setInterval(() => feed.querySelectorAll('time').forEach(t => {
       t.textContent = age(+t.dataset.ts);
     }), 30000);
-    return () => { clearInterval(ti); clearInterval(ti2); };
+    return () => { clearInterval(ti2); };
   }
 });

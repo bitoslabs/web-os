@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Example Counter</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 400 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #14141c; color: #eceae7; }
+  .card { width: min(380px, 92vw); padding: 22px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #1b1b25; }
+  h1 { margin: 0 0 2px; font-size: 17px; }
+  .sub { font: 400 11px ui-monospace, monospace; color: #6b6a74; margin-bottom: 18px; }
+  .count { font: 600 44px ui-monospace, monospace; text-align: center; margin: 6px 0 16px; color: #a78bfa; }
+  .row { display: flex; gap: 8px; }
+  button { flex: 1; padding: 8px 12px; border-radius: 7px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.08);
+    color: inherit; font: 500 12px inherit; cursor: pointer; }
+  button.primary { background: #8b5cf6; border-color: transparent; color: #fff; }
+  button:hover { background: rgba(255,255,255,.16); }
+  button.primary:hover { background: #a78bfa; }
+  .status { margin-top: 16px; font: 400 11px ui-monospace, monospace; color: #6b6a74; white-space: pre-wrap; min-height: 2.4em; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Example Counter</h1>
+    <div class="sub" id="meta">connecting to bitos…</div>
+    <div class="count" id="count">0</div>
+    <div class="row">
+      <button id="dec">−1</button>
+      <button class="primary" id="inc">+1</button>
+      <button id="reset">reset</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+  <script>
+    (function () {
+      var countEl = document.getElementById('count');
+      var metaEl = document.getElementById('meta');
+      var statusEl = document.getElementById('status');
+      var count = 0, canStore = false, canWindow = false;
+
+      function paint() { countEl.textContent = String(count); }
+      function note(text) { statusEl.textContent = text; }
+
+      function applyPermissions(perms) {
+        perms = perms || {};
+        canStore = !!perms['app.storage'];
+        canWindow = !!perms['app.window'];
+        return Promise.all([
+          canWindow ? window.bitos.window.setTitle('Example Counter — bitos').catch(function () { }) : Promise.resolve(),
+          canStore ? window.bitos.storage.get('count').then(function (saved) {
+            if (typeof saved === 'number') { count = saved; paint(); }
+            return window.bitos.storage.usage().then(function (u) { note('sandboxed · storage ' + u.bytes + '/' + u.quota + ' bytes'); });
+          }).catch(function () { }) : Promise.resolve(note('sandboxed · app.storage is denied — enable it in the Store to persist'))
+        ]);
+      }
+
+      (async function () {
+        try {
+          var info = await window.bitos.ready();
+          metaEl.textContent = info.app.name + ' v' + info.app.version + ' · api ' + info.api;
+          window.bitos.onPermissions = function (p) { applyPermissions(p); };
+          await applyPermissions(info.permissions);
+        } catch (e) {
+          note('host API error: ' + e.message);
+        }
+      })();
+
+      function save() {
+        paint();
+        if (!canStore) return;
+        window.bitos.storage.set('count', count).catch(function (e) { note('could not save: ' + e.message); });
+      }
+      document.getElementById('inc').onclick = function () { count++; save(); };
+      document.getElementById('dec').onclick = function () { count--; save(); };
+      document.getElementById('reset').onclick = function () {
+        count = 0; paint();
+        if (!canStore) return;
+        window.bitos.storage.remove('count').then(function () { note('reset · storage cleared for this key'); })
+          .catch(function () { });
+      };
+    })();
+  </script>
+</body>
+</html>

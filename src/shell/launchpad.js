@@ -2,8 +2,9 @@
 /* OS shell module: Launchpad — a full-screen grid of every registered program.
  * It reads the app registry, not the pinned catalog, so new apps appear here
  * automatically. Open with F4, the dock tile, or the app menu. */
-import { $, esc, icon, APPS } from '../core/index.js';
+import { $, esc, icon, APPS, onEcosystemChange } from '../core/index.js';
 import { WM } from './window-manager.js';
+import { installedLaunchEntries } from './installed-apps.js';
 
 let lpEl = null, gridEl = null, inputEl = null;
 let matches = [], sel = 0;
@@ -20,6 +21,8 @@ export function buildLaunchpad() {
   inputEl.addEventListener('input', () => render(inputEl.value));
   inputEl.addEventListener('keydown', onLPKey);
   lpEl.addEventListener('pointerdown', e => { if (!e.target.closest('.lp-app,.lp-search,.lp-foot')) closeLP(); });
+  /* Installed apps appear and disappear as the ecosystem changes. */
+  onEcosystemChange(() => { if (lpOpen()) render(inputEl.value); });
 }
 
 export function openLP() {
@@ -33,9 +36,9 @@ export function closeLP() { if (lpEl) lpEl.classList.add('hide'); }
 export function lpOpen() { return !!lpEl && !lpEl.classList.contains('hide'); }
 
 function catalog() {
-  return Object.entries(APPS)
-    .map(([id, a]) => ({ id, a }))
-    .sort((x, y) => x.a.title.localeCompare(y.a.title));
+  const builtins = Object.entries(APPS).map(([id, a]) => ({ id, a, installed: false }));
+  const installed = installedLaunchEntries().map(e => ({ id: e.key, a: e.def, installed: true }));
+  return [...builtins, ...installed].sort((x, y) => x.a.title.localeCompare(y.a.title));
 }
 
 function render(q) {
@@ -66,7 +69,8 @@ function render(q) {
 function launch(i) {
   const x = matches[i]; if (!x) return;
   closeLP();
-  WM.open(x.id);
+  if (x.installed) WM.open(x.id, { def: x.a, title: x.a.title });
+  else WM.open(x.id);
 }
 
 function setSel(i, scroll = true) {
