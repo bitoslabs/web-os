@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "example-counter",
+  "version": "0.1.0",
+  "name": "Example Counter",
+  "description": "A small offline counter app",
+  "entry": "index.html",
+  "icon": "icon.svg",
+  "minBitosApi": 1,
+  "permissions": [],
+  "files": {
+    "index.html": "sha256-REPLACE_WITH_HEX_DIGEST",
+    "app.js": "sha256-REPLACE_WITH_HEX_DIGEST",
+    "style.css": "sha256-REPLACE_WITH_HEX_DIGEST",
+    "icon.svg": "sha256-REPLACE_WITH_HEX_DIGEST"
+  }
+}

@@ -96,6 +96,8 @@ os-web/
 3. Add the id to `BUILT_IN_APPS` in `src/apps.js`.
 4. Add it to `SHELL_APPS` in `src/shell/launchers.js` only if it should be pinned.
 
+For installable third-party apps, start with the [developer guide](docs/APP_DEVELOPER_GUIDE.md) and [app template](templates/installable-app/README.md). The [App Store plan](docs/APP_STORE_PLAN.md) covers installation and Nostr submissions, and the [ecosystem data model](docs/ECOSYSTEM_DATA_MODEL.md) defines the records. The steps above are for trusted built-in apps only.
+
 ## Native boundary
 
 In the booted OS the launcher injects `window.__bitosNative`; `src/core/native.js`
