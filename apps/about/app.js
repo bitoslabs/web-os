@@ -12,7 +12,8 @@ registerApp('about', {
     <div class="vv" data-dev>${SYSINFO ? esc(SYSINFO.deviceName + ' · ' + SYSINFO.cpuArch + ' · native api v' + SYSINFO.apiVersion) : 'device info — simulated preview'}</div>
     <div class="vv" data-up>up 0m</div>
     <div class="btns"><button class="btn sm" data-hb>handbook</button>
-    <button class="btn ghost sm" data-gs>getting started</button></div></div>`;
+    <button class="btn ghost sm" data-gs>getting started</button>
+    <a class="btn ghost sm" href="https://bitos.space" target="_blank" rel="noopener noreferrer">bitos.space ↗</a></div></div>`;
     const up = body.querySelector('[data-up]');
     const t = setInterval(() => {
       const s = Math.floor((Date.now() - sessionStart) / 1000);

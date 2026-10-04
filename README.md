@@ -10,6 +10,8 @@ the `file://` preview need one static bundle. This project trades that for real
 ES modules with explicit imports, which is cleaner to develop and deploy as a
 website.
 
+Live demo: <https://bitos.space>
+
 ## Run it
 
 Module scripts do not run from `file://`, so serve the folder over HTTP:
