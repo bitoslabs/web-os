@@ -14,10 +14,51 @@ export function toast(msg, kind = 'ok', action) {
   const ic = kind === 'ok' ? 'check' : kind === 'err' ? 'help' : kind === 'zap' ? 'bolt' : 'mag';
   const t = el('div', 'toast ' + (kind || 'ok'),
     `<span class="tico">${icon(ic, 13)}</span><span class="tm">${msg}</span>${action ? `<button class="ta">${action.label}</button>` : ''}<button class="tx" title="dismiss" aria-label="dismiss">${icon('close', 11)}</button>`);
-  const dismiss = () => { if (!t.isConnected) return; t.classList.add('out'); setTimeout(() => t.remove(), 220); };
-  if (action) t.querySelector('.ta').onclick = () => { action.fn(); dismiss(); };
-  t.querySelector('.tx').onclick = dismiss;
-  box.append(t); setTimeout(dismiss, action ? 6500 : 4200);
+  const auto = action ? 6500 : 4200;
+  let timer = null;
+  const arm = ms => { clearTimeout(timer); timer = setTimeout(() => dismiss(), ms); };
+  const dismiss = dir => {
+    if (!t.isConnected) return;
+    clearTimeout(timer);
+    if (dir == null) { t.style.transition = ''; t.style.transform = ''; t.style.opacity = ''; t.classList.add('out'); }
+    else {
+      t.style.transition = 'transform 200ms var(--ease), opacity 200ms var(--ease)';
+      t.style.transform = `translateX(${dir * 110}%)`; t.style.opacity = '0';
+    }
+    setTimeout(() => t.remove(), 240);
+  };
+  if (action) t.querySelector('.ta').onclick = () => { action.fn(); dismiss(1); };
+  t.querySelector('.tx').onclick = () => dismiss(1);
+  /* swipe to close: drag a banner left or right past a third of its width, or flick it */
+  let sx = 0, dx = 0, vx = 0, lastX = 0, lastT = 0, dragging = false;
+  t.addEventListener('pointerdown', e => {
+    if (e.target.closest('.ta,.tx')) return;
+    dragging = true; sx = lastX = e.clientX; lastT = e.timeStamp; dx = 0; vx = 0;
+    clearTimeout(timer);
+    t.style.transition = 'none'; t.style.cursor = 'grabbing'; t.style.userSelect = 'none';
+    try { t.setPointerCapture(e.pointerId); } catch (err) { }
+  });
+  t.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    dx = e.clientX - sx;
+    const dt = e.timeStamp - lastT;
+    if (dt > 0) { vx = (e.clientX - lastX) / dt; lastX = e.clientX; lastT = e.timeStamp; }
+    t.style.transform = `translateX(${dx}px)`;
+    t.style.opacity = String(Math.max(.35, 1 - Math.abs(dx) / (t.offsetWidth || 320)));
+  });
+  const end = () => {
+    if (!dragging) return; dragging = false;
+    t.style.cursor = ''; t.style.userSelect = '';
+    const w = t.offsetWidth || 320;
+    if (Math.abs(dx) > w * 0.35 || Math.abs(vx) > 0.6) { dismiss(Math.sign(dx) || 1); return; }
+    t.style.transition = 'transform 220ms var(--ease), opacity 220ms var(--ease)';
+    t.style.transform = ''; t.style.opacity = '';
+    arm(dx === 0 ? auto : Math.min(auto, 2600));
+    setTimeout(() => { if (t.isConnected) t.style.transition = ''; }, 240);
+  };
+  t.addEventListener('pointerup', end);
+  t.addEventListener('pointercancel', end);
+  box.append(t); arm(auto);
 }
 export function copyText(txt, msg) {
   const done = () => toast(msg || 'copied to clipboard', 'ok');
