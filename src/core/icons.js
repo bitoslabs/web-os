@@ -37,6 +37,13 @@ export const ICONS = {
   arrd: '<path d="M12 5v14"/><path d="M6.5 13.5 12 19l5.5-5.5"/>',
   down: '<path d="M12 4v10"/><path d="M7.8 9.8 12 14l4.2-4.2"/><path d="M4.5 19.5h15"/>',
   pic: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M5 17.2l4.8-4.8 3.6 3.6 2.6-2.6 3 3"/>',
+  note: '<rect x="5.5" y="3.5" width="13" height="17" rx="2"/><path d="M9 8.5h6M9 12h6M9 15.5h3.5"/>',
+  calc: '<rect x="5" y="3.5" width="14" height="17" rx="2"/><rect x="7.5" y="6" width="9" height="3" rx="1"/><path d="M8.2 12.4h1M11.5 12.4h1M14.8 12.4h1M8.2 15.6h1M11.5 15.6h1M14.8 15.6h1M8.2 18.2h1M11.5 18.2h1M14.8 18.2h1"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.5 3.6 5.3 3.6 8.5S14.4 18.5 12 20.5C9.6 18.5 8.4 15.7 8.4 12S9.6 6 12 3.5Z"/>',
+  cam: '<path d="M3.5 8.2h3.2l1.6-2.2h7.4l1.6 2.2h3.2v10.3h-17z"/><circle cx="12" cy="13.2" r="3.3"/>',
+  upload: '<path d="M12 19V8.5"/><path d="M7.8 12.7 12 8.5l4.2 4.2"/><path d="M4.5 4.5h15"/>',
+  cloud: '<path d="M7 18.5h9.6a4 4 0 0 0 .5-8A5.4 5.4 0 0 0 6.9 9.9 3.8 3.8 0 0 0 7 18.5Z"/>',
+  lock: '<rect x="5.5" y="10.5" width="13" height="9" rx="1.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
 };
 export const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square">${ICONS[n] || ''}</svg>`;
 export const LOGO = `<svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="1" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-opacity=".4"/><path d="M10.2 3.2 5.4 10h2.8L7.2 14.8 12.6 8H9.8z" fill="#8b5cf6"/></svg>`;

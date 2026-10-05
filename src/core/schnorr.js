@@ -83,6 +83,17 @@ export async function verifySchnorr(pubkeyHex, msg, sigHex) {
   return R.x === r;
 }
 
+/* A uniformly random, in-range secret key (32-byte hex) for signing. */
+export function generateSecretKey() {
+  for (;;) {
+    const sk = new Uint8Array(32);
+    if (!(globalThis.crypto && globalThis.crypto.getRandomValues)) throw new Error('secure randomness is unavailable');
+    globalThis.crypto.getRandomValues(sk);
+    const d = bytesToBig(sk);
+    if (d > 0n && d < ORDER) return bytesToHex(sk);
+  }
+}
+
 /* x-only public key (32-byte hex) for a secret key. */
 export function xOnlyPubkey(seckeyHex) {
   const sk = hexToBytes(seckeyHex);

@@ -21,3 +21,6 @@ export * from './relay.js';
 export * from './schnorr.js';
 export * from './trust-registry.js';
 export * from './discovery.js';
+export * from './crypt.js';
+export * from './blob.js';
+export * from './cloudfile.js';

@@ -1,9 +1,21 @@
 /* Built-in app: Files. Browser preview uses scoped localStorage data; the OS
  * uses permission-checked fs.* broker methods scoped to the Bitos home. */
-import { registerApp, native, esc, icon, toast, dialog } from '../../src/core/index.js';
+import {
+  registerApp, native, esc, icon, toast, dialog, utf8Bytes, resolveOpener,
+  generateSecretKey, createBlossomClient, createMemoryBlossom,
+  encryptAndUpload, decryptFile, manifestName, isManifestName, serializeManifest, parseManifest,
+  bytesToBase64, base64ToBytes,
+} from '../../src/core/index.js';
+import { idbPutIn, idbGetIn, idbDelIn } from '../../src/core/idb.js';
 import { openContextMenu, togglePopup } from '../../src/shell/menus.js';
 import { WM } from '../../src/shell/window-manager.js';
 import { SAMPLE_FILES } from '../../src/data/sample-files.js';
+
+/* Encrypted cloud files (Blossom, BUD-02/11). When no server is configured the
+ * preview uses a local simulated store; real uploads need {server, seckey} in
+ * localStorage under this key. The passphrase never leaves the device. */
+const BLOSSOM_KEY = 'bitos.ui.blossom.v1';
+const MIN_PASSPHRASE = 8;
 
 /* ================= files service (GUI-02) =================
    Native: broker fs.* methods over the bridge, scoped to the session home.
@@ -15,7 +27,9 @@ const fsapi = (() => {
     rename: (from, to) => native.call('fs.rename', { from, to }),
     remove: p => native.call('fs.delete', { path: p }),
     readText: p => native.call('fs.readText', { path: p }),
-    writeText: (p, content) => native.call('fs.writeText', { path: p, content })
+    writeText: (p, content) => native.call('fs.writeText', { path: p, content }),
+    readBytes: async p => base64ToBytes((await native.call('fs.readBytes', { path: p })).content),
+    writeBytes: (p, bytes, mime) => native.call('fs.writeBytes', { path: p, content: bytesToBase64(bytes), mime: mime || 'application/octet-stream' })
   };
 
   const KEY = 'bitos.ui.fs.v1';
@@ -45,12 +59,17 @@ const fsapi = (() => {
     const pre = p ? p + '/' : '';
     return [...new Set(Object.keys(src).filter(k => k !== p && k.startsWith(pre) && k.slice(pre.length) && !k.slice(pre.length).includes('/')).map(k => k.slice(pre.length)))];
   };
+  /* Binary entries keep a marker in the tree and their bytes in IndexedDB, so
+     localStorage stays small and text-only. */
+  const isBlob = v => v && typeof v === 'object' && v.blob === 1;
+  const blobSize = v => typeof v === 'string' ? v.length : (v && v.size) || 0;
+  const moveBlob = async (from, to) => { const d = await idbGetIn('files', from); if (d) { await idbPutIn('files', to, d); await idbDelIn('files', from); } };
   return {
     async list(p) {
       await tick(); load(); p = norm(p);
       const dmap = tree.d.reduce((a, d) => (a[d] = 1, a), {});
       const dirs = kids(p, dmap).map(n => ({ name: n, dir: true, size: 0, mtime: Date.now() / 1000 | 0 }));
-      const files = kids(p, tree.f).map(n => ({ name: n, dir: false, size: (tree.f[(p ? p + '/' : '') + n] || '').length, mtime: Date.now() / 1000 | 0 }));
+      const files = kids(p, tree.f).map(n => ({ name: n, dir: false, size: blobSize(tree.f[(p ? p + '/' : '') + n]), mtime: Date.now() / 1000 | 0 }));
       return { path: p || '.', entries: [...dirs, ...files].sort((a, b) => b.dir - a.dir || a.name.localeCompare(b.name)) };
     },
     async mkdir(p) {
@@ -61,28 +80,52 @@ const fsapi = (() => {
     async writeText(p, c) {
       await tick(); load(); p = norm(p); if (!p) err('INVALID_ARGUMENT', 'name required');
       if (tree.d.includes(p)) err('INVALID_ARGUMENT', 'is a directory');
+      if (isBlob(tree.f[p])) await idbDelIn('files', p);
       tree.f[p] = String(c); save(); return { written: true, bytes: tree.f[p].length };
     },
     async readText(p) {
       await tick(); load(); p = norm(p);
       const c = tree.f[p]; if (c === undefined) err('INVALID_ARGUMENT', 'no such file');
+      if (isBlob(c)) err('INVALID_ARGUMENT', 'not a text file');
       return { content: c, length: c.length };
+    },
+    async writeBytes(p, bytes, mime) {
+      await tick(); load(); p = norm(p); if (!p) err('INVALID_ARGUMENT', 'name required');
+      if (tree.d.includes(p)) err('INVALID_ARGUMENT', 'is a directory');
+      const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      await idbPutIn('files', p, data);
+      tree.f[p] = { blob: 1, size: data.length, mime: mime || 'application/octet-stream' };
+      save(); return { written: true, bytes: data.length };
+    },
+    async readBytes(p) {
+      await tick(); load(); p = norm(p);
+      const v = tree.f[p]; if (v === undefined) err('INVALID_ARGUMENT', 'no such file');
+      if (typeof v === 'string') return utf8Bytes(v);
+      const data = await idbGetIn('files', p);
+      if (!data) err('INTERNAL', 'file bytes are missing from storage');
+      return data instanceof Uint8Array ? data : new Uint8Array(data);
     },
     async rename(from, to) {
       await tick(); load(); from = norm(from); to = norm(to);
       if (tree.f[from] !== undefined) {
         if (tree.f[to] !== undefined || tree.d.includes(to)) err('CONFLICT', 'destination exists');
-        tree.f[to] = tree.f[from]; delete tree.f[from];
+        const v = tree.f[from];
+        tree.f[to] = v; delete tree.f[from];
+        if (isBlob(v)) await moveBlob(from, to);
       } else if (tree.d.includes(from)) {
         if (tree.d.includes(to) || tree.f[to] !== undefined) err('CONFLICT', 'destination exists');
         tree.d = tree.d.map(d => d === from ? to : d);
-        Object.keys(tree.f).forEach(k => { if (k.startsWith(from + '/')) { tree.f[to + k.slice(from.length)] = tree.f[k]; delete tree.f[k]; } });
+        for (const k of Object.keys(tree.f).filter(k2 => k2.startsWith(from + '/'))) {
+          const nk = to + k.slice(from.length);
+          if (isBlob(tree.f[k])) await moveBlob(k, nk);
+          tree.f[nk] = tree.f[k]; delete tree.f[k];
+        }
       } else err('INVALID_ARGUMENT', 'no such path');
       save(); return { renamed: true };
     },
     async remove(p) {
       await tick(); load(); p = norm(p);
-      if (tree.f[p] !== undefined) { delete tree.f[p]; }
+      if (tree.f[p] !== undefined) { if (isBlob(tree.f[p])) await idbDelIn('files', p); delete tree.f[p]; }
       else if (tree.d.includes(p)) {
         if (Object.keys(tree.f).some(k => k.startsWith(p + '/')) || tree.d.some(d => d.startsWith(p + '/')))
           err('CONFLICT', 'folder not empty');
@@ -120,6 +163,9 @@ registerApp('files', {
     const editorText = van.state('');
     const errState = van.state(null);
     let searchEl = null, bodyEl = null;
+    const filePicker = input({ type: 'file', multiple: true, 'aria-hidden': 'true', style: 'display:none' });
+    const openPicker = () => filePicker.click();
+    filePicker.addEventListener('change', () => { uploadFiles(filePicker.files); filePicker.value = ''; });
 
     const tab = () => tabs.val[ti.val];
     const updateTab = patch => { const a = tabs.val.slice(); a[ti.val] = { ...a[ti.val], ...patch }; tabs.val = a; };
@@ -163,7 +209,36 @@ registerApp('files', {
 
     /* ---- item actions ---- */
     const toggleSel = name => { const t = tab(); updateTab({ sel: t.sel === name ? null : name }); };
-    const openItem = e => e.dir ? nav(join(tab().cwd, e.name)) : openText(e.name);
+    const openItem = e => e.dir ? nav(join(tab().cwd, e.name)) : openEntry(e.name);
+    const TEXT_EXT = new Set(['txt', 'md', 'markdown', 'json', 'js', 'mjs', 'cjs', 'css', 'html', 'htm', 'xml', 'csv', 'tsv', 'log', 'yml', 'yaml', 'ini', 'conf', 'sh', 'py', 'ts', 'tsx', 'jsx', 'c', 'h', 'cpp', 'rs', 'go', 'toml']);
+    const isTextish = n => TEXT_EXT.has(ext(n)) || /^text\//.test(mimeOf(n));
+    /* Open by file type: dispatch to a registered app that declares `opens`
+       patterns (images -> image-viewer, text -> text-editor with save-back),
+       otherwise fall back to the inline editor for text and a hint for binary. */
+    async function openEntry(name) {
+      const path = join(tab().cwd, name);
+      const mime = mimeOf(name);
+      const opener = resolveOpener(name, mime, 'files');
+      if (opener === 'image-viewer') {
+        try {
+          const bytes = await fsapi.readBytes(path);
+          WM.open('image-viewer', { key: 'image-viewer#' + path, title: name, file: { name, mime, size: bytes.length, url: URL.createObjectURL(new Blob([bytes], { type: mime })) } });
+        } catch (e) { toast(`open: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+        return;
+      }
+      if (opener === 'text-editor') {
+        try {
+          const bytes = await fsapi.readBytes(path);
+          WM.open('text-editor', {
+            key: 'text-editor#' + path, title: name,
+            file: { name, mime, size: bytes.length, text: new TextDecoder().decode(bytes), save: next => fsapi.writeText(path, next) },
+          });
+        } catch (e) { toast(`open: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+        return;
+      }
+      if (isTextish(name)) { openText(name); return; }
+      toast(`no app opens <b>${esc(name)}</b> — right-click to save a copy`, 'info');
+    }
     async function openText(n) {
       const p = join(tab().cwd, n);
       try { const r = await fsapi.readText(p); editorName.val = n; editorText.val = r.content; editor.val = p; }
@@ -198,6 +273,83 @@ registerApp('files', {
         await fsapi.remove(join(t.cwd, t.sel));
         toast(`deleted <b>${esc(t.sel)}</b>`, 'ok'); updateTab({ sel: null }); await refresh();
       } catch (e) { toast(`delete: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); refresh(); }
+    }
+
+    /* ---- upload / cloud files ---- */
+    const MIME = { txt: 'text/plain', md: 'text/markdown', json: 'application/json', pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', mp3: 'audio/mpeg', mp4: 'video/mp4', zip: 'application/zip' };
+    const mimeOf = n => MIME[ext(n)] || 'application/octet-stream';
+    function uniqueName(name, have) {
+      have = have || new Set(tab().cache.map(e => e.name));
+      if (!have.has(name)) { have.add(name); return name; }
+      const dot = name.lastIndexOf('.');
+      const stem = dot > 0 ? name.slice(0, dot) : name, tail = dot > 0 ? name.slice(dot) : '';
+      for (let i = 2; ; i++) { const cand = `${stem} ${i}${tail}`; if (!have.has(cand)) { have.add(cand); return cand; } }
+    }
+    async function uploadFiles(files) {
+      const list = [...(files || [])].filter(Boolean); if (!list.length) return;
+      let ok = 0, bad = 0;
+      const have = new Set(tab().cache.map(e => e.name));
+      for (const f of list) {
+        try { await fsapi.writeBytes(join(tab().cwd, uniqueName(f.name, have)), new Uint8Array(await f.arrayBuffer()), f.type); ok++; }
+        catch (e) { bad++; }
+      }
+      await refresh();
+      if (ok) toast(`uploaded <b>${ok}</b> file${ok === 1 ? '' : 's'}${bad ? ` · ${bad} failed` : ''}`, 'ok');
+      else if (bad) toast('upload failed', 'err');
+    }
+    function blossomClient(servers) {
+      let cfg = null; try { cfg = JSON.parse(localStorage.getItem(BLOSSOM_KEY)) || null; } catch (e) { }
+      if (!cfg || !cfg.seckey) {
+        cfg = { server: (cfg && cfg.server) || '', seckey: generateSecretKey() };
+        try { localStorage.setItem(BLOSSOM_KEY, JSON.stringify(cfg)); } catch (e) { }
+      }
+      if (cfg.server) return createBlossomClient({ servers: [cfg.server], seckey: cfg.seckey });
+      const http = (servers || []).filter(s => /^https?:\/\//.test(s));
+      if (http.length) return createBlossomClient({ servers: http, seckey: cfg.seckey });
+      return createMemoryBlossom();
+    }
+    async function saveCopy(name) {
+      try {
+        const bytes = await fsapi.readBytes(join(tab().cwd, name));
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([bytes], { type: mimeOf(name) }));
+        a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      } catch (e) { toast(`save: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+    }
+    async function cloudUpload(name) {
+      const pass = await dialog({
+        title: `encrypt & upload ${name}`, password: true, input: true, ok: 'encrypt & upload',
+        placeholder: 'passphrase — not stored anywhere',
+        body: 'encrypted on this device; the server only receives ciphertext. keep this passphrase, it cannot be recovered.',
+      });
+      if (pass == null) return;
+      if (pass.length < MIN_PASSPHRASE) { toast(`use at least ${MIN_PASSPHRASE} characters`, 'err'); return; }
+      try {
+        const bytes = await fsapi.readBytes(join(tab().cwd, name));
+        const client = blossomClient();
+        const { manifest } = await encryptAndUpload({ bytes, name, mime: mimeOf(name), passphrase: pass, client });
+        const sidecar = manifestName(name);
+        await fsapi.writeText(join(tab().cwd, sidecar), serializeManifest(manifest));
+        toast(`encrypted &amp; uploaded <b>${esc(name)}</b>${client.simulated ? ' · simulated' : ''}`, 'ok');
+        updateTab({ sel: sidecar }); await refresh();
+      } catch (e) { toast(`cloud: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+    }
+    async function cloudRestore(name) {
+      let parsed;
+      try { parsed = parseManifest((await fsapi.readText(join(tab().cwd, name))).content); }
+      catch (e) { toast(`restore: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); return; }
+      if (!parsed.ok) { toast(`restore: ${esc(parsed.error)}`, 'err'); return; }
+      const pass = await dialog({
+        title: `restore ${parsed.manifest.name}`, password: true, input: true, ok: 'restore',
+        placeholder: 'passphrase', body: 'fetches the ciphertext, verifies its hash, then decrypts it here.',
+      });
+      if (pass == null) return;
+      try {
+        const out = await decryptFile({ manifest: parsed.manifest, passphrase: pass, client: blossomClient(parsed.manifest.servers) });
+        const dest = uniqueName(out.name);
+        await fsapi.writeBytes(join(tab().cwd, dest), out.bytes, out.mime);
+        toast(`restored <b>${esc(dest)}</b>`, 'ok'); updateTab({ sel: dest }); await refresh();
+      } catch (e) { toast(`restore: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
     }
 
     /* ---- tabs / windows ---- */
@@ -364,11 +516,13 @@ registerApp('files', {
       div({ class: 'seg fm-view' }, ...['grid', 'list', 'cols', 'large'].map(viewSeg)),
       span({ class: 'fm-flex' }),
       sortButton(),
+      button({ class: 'btn sm ghost', title: 'upload file', 'aria-label': 'upload file', onclick: openPicker }, iconEl('upload', 15, 'fm-vic')),
       button({ class: 'btn sm ghost', title: 'open in new window', onclick: newWindow }, iconEl('win', 15, 'fm-vic')),
       refreshBtn(),
       searchInput());
 
     const App = () => div({ class: 'fm' },
+      filePicker,
       aside({ class: 'fm-side' },
         div({ class: 'lbl' }, 'places'),
         placeBtn('home', 'home', ''), placeBtn('fold', 'documents', 'Documents'),
@@ -393,19 +547,37 @@ registerApp('files', {
       if (item) {
         const name = item.getAttribute('data-n'), isDir = item.getAttribute('data-dir') === '1';
         updateTab({ sel: name });
+        const cloud = isDir ? [] : isManifestName(name)
+          ? [{ t: 'restore from cloud', ic: 'down', fn: () => cloudRestore(name) }]
+          : [{ t: 'encrypt & upload', ic: 'lock', fn: () => cloudUpload(name) }];
         openContextMenu(e.clientX, e.clientY, [
-          { t: 'open', ic: 'ext', fn: () => isDir ? nav(join(tab().cwd, name)) : openText(name) },
+          { t: 'open', ic: 'ext', fn: () => isDir ? nav(join(tab().cwd, name)) : openEntry(name) },
+          isDir ? null : { t: 'save a copy', ic: 'down', fn: () => saveCopy(name) },
           '-',
+          ...cloud,
+          cloud.length ? '-' : null,
           { t: 'rename', ic: 'pen', fn: () => startRename(name) },
-          { t: 'delete', ic: 'trash', fn: deleteSel }]);
+          { t: 'delete', ic: 'trash', fn: deleteSel }].filter(Boolean));
       }
       else openContextMenu(e.clientX, e.clientY, [
         { t: 'new folder', ic: 'fold', fn: () => createItem('nf') },
         { t: 'new file', ic: 'doc', fn: () => createItem('nt') },
+        { t: 'upload file…', ic: 'upload', fn: openPicker },
         '-',
         { t: 'refresh', ic: 'refresh', fn: refresh },
         { t: 'open in new window', ic: 'win', fn: newWindow }]);
     });
+    const rootEl = body.querySelector('.fm');
+    if (rootEl) {
+      const stop = e => { e.preventDefault(); e.stopPropagation(); };
+      rootEl.addEventListener('dragenter', e => { stop(e); rootEl.classList.add('fm-drag'); });
+      rootEl.addEventListener('dragover', e => { stop(e); e.dataTransfer.dropEffect = 'copy'; });
+      rootEl.addEventListener('dragleave', e => { if (e.target === rootEl) rootEl.classList.remove('fm-drag'); });
+      rootEl.addEventListener('drop', e => {
+        stop(e); rootEl.classList.remove('fm-drag');
+        if (!editor.val) uploadFiles(e.dataTransfer.files);
+      });
+    }
     nav('');
   }
 });

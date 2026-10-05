@@ -42,13 +42,19 @@ interface BitosAPI {
     delete(path: string): Promise<{ deleted: boolean }>;
     readText(path: string): Promise<{ content: string; length: number }>;
     writeText(path: string, content: string): Promise<{ written: boolean; bytes: number }>;
+    readBytes(path: string): Promise<{ content: string; length: number }>;   // base64
+    writeBytes(path: string, content: string, mime?: string): Promise<{ written: boolean; bytes: number }>;  // base64
   };
 }
 ```
 
 `system.getInfo` must return only non-sensitive device information. `setup.complete` must validate length and allowed characters, write persistently, and return success only after the state is committed. The optional identity fields (`npub`, `nsec`) carry the first-boot keypair: they are persisted in the setup record and returned by `setup.getState` to the trusted shell only, never logged. `network.listWifi` uses opaque IDs rather than raw device paths. Secrets sent to `connectWifi` are never logged or returned. Power actions require a trusted shell action and a visible confirmation in the UI.
 
-`fs.*` (GUI-02) is scoped to the session home (`fs_init` root, `/home/bitos` by default): paths are relative with 1-16 components of `[A-Za-z0-9 ._-]`, `..` and absolute paths are rejected, every walked component is opened `O_NOFOLLOW` so symlinks are denied and invisible, and text payloads are capped at 16 KiB with binary detection. Delete is permanent until the data partition and trash arrive.
+`fs.*` (GUI-02) is scoped to the session home (`fs_init` root, `/home/bitos` by default): paths are relative with 1-16 components of `[A-Za-z0-9 ._-]`, `..` and absolute paths are rejected, every walked component is opened `O_NOFOLLOW` so symlinks are denied and invisible, and text payloads are capped at 16 KiB with binary detection. `fs.readBytes`/`fs.writeBytes` carry arbitrary bytes base64-encoded over the JSON bridge and need their own size cap and MIME check; the browser adapter stores them in IndexedDB. Delete is permanent until the data partition and trash arrive.
+
+## Encrypted cloud files
+
+The browser encrypts a file with WebCrypto (AES-256-GCM) under a fresh data key, wraps that key with a PBKDF2-derived KEK, and uploads only the ciphertext to a Blossom server (`src/core/crypt.js`, `src/core/blob.js`, `src/core/cloudfile.js`). The passphrase and plaintext never reach a server and are never logged. On the booted OS, key custody should move to the native keysvc (or a user-unlocked vault) rather than a browser passphrase, and uploads must go through a broker method that enforces size limits, the curated server list, and per-app permission instead of exposing `fetch` to app code. Never hand a signing key or the native bridge to a sandboxed installed app.
 
 ## Wire protocol and bridge
 

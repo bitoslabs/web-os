@@ -80,7 +80,7 @@ export function dialog(o) {
     box.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true">
       <div class="modal-t">${esc(o.title || '')}</div>
       ${o.body ? `<div class="modal-b">${esc(o.body)}</div>` : ''}
-      ${o.input ? `<input class="modal-in" spellcheck="false" placeholder="${esc(o.placeholder || '')}" value="${esc(o.value || '')}">` : ''}
+      ${o.input ? `<input class="modal-in" type="${o.password ? 'password' : 'text'}" spellcheck="false" autocomplete="off" placeholder="${esc(o.placeholder || '')}" value="${esc(o.value || '')}">` : ''}
       <div class="modal-act">
         <button class="btn sm ghost" data-c>cancel</button>
         <button class="btn sm ${o.danger ? 'danger' : 'pri'}" data-k>${esc(o.ok || 'ok')}</button>

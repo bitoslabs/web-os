@@ -9,10 +9,10 @@
    ========================================================================== */
 
 const DB_NAME = 'bitos-apps';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE = 'packages';
 const META_STORES = ['installs', 'grants', 'appData'];
-const EXTRA_STORES = ['releases', 'listings', 'catalog', 'trust'];
+const EXTRA_STORES = ['releases', 'listings', 'catalog', 'trust', 'blobs', 'files'];
 
 const memory = new Map();
 let opening = null;
@@ -125,7 +125,7 @@ export async function idbAll() {
 }
 
 /* Generic per-store helpers for the extra stores (releases, listings, catalog). */
-const extraMemory = { releases: new Map(), listings: new Map(), catalog: new Map(), trust: new Map() };
+const extraMemory = { releases: new Map(), listings: new Map(), catalog: new Map(), trust: new Map(), blobs: new Map(), files: new Map() };
 function extraMem(store) { return extraMemory[store] || (extraMemory[store] = new Map()); }
 
 export async function idbPutIn(store, key, value) {
@@ -146,6 +146,16 @@ export async function idbAllIn(store) {
     const keys = tx.objectStore(store).getAllKeys();
     const vals = tx.objectStore(store).getAll();
     tx.oncomplete = () => resolve(keys.result.map((k, i) => [k, vals.result[i]]));
+    tx.onerror = () => reject(tx.error);
+  });
+}
+export async function idbGetIn(store, key) {
+  if (!available()) return extraMem(store).get(key);
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    tx.oncomplete = () => resolve(req.result);
     tx.onerror = () => reject(tx.error);
   });
 }

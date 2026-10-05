@@ -19,6 +19,9 @@ check-package:
 	node scripts/test-relay.mjs
 	node scripts/test-schnorr.mjs
 	node scripts/test-trust.mjs
+	node scripts/test-crypt.mjs
+	node scripts/test-cloudfile.mjs
+	node scripts/test-registry.mjs
 
 ## Build a .bitos-app from SRC (default templates/installable-app)
 pack:

@@ -9,6 +9,12 @@
 export const BUILT_IN_APPS = [
   'files',
   'terminal',
+  'notes',
+  'calculator',
+  'text-editor',
+  'image-viewer',
+  'screenshots',
+  'browser',
   'handbook',
   'nostr',
   'settings',

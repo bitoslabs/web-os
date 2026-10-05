@@ -59,6 +59,9 @@ os-web/
       schnorr.js      BIP-340 x-only Schnorr sign/verify (preview)
       trust-registry.js publisher -> release-signer bindings from listings
       discovery.js    merge discovered listing candidates
+      crypt.js        AES-256-GCM file encryption + PBKDF2 key wrap (WebCrypto)
+      blob.js         Blossom (BUD-02/11) content-addressed blob client + auth
+      cloudfile.js    encrypted-file manifest: encrypt+upload / fetch+decrypt
       index.js        barrel re-export of the core
     data/             content and simulation, separated from programs
       handbook.js     HBDATA design-system sections
@@ -68,6 +71,7 @@ os-web/
       catalog-signature.js  generated snapshot public key + signature
       trusted-keys.js   publisher identity -> trusted Ed25519 signer keys
       trusted-relays.js curated relay trust list
+      trusted-blossom.js curated Blossom server list (empty until reviewed)
     shell/            desktop-wide behavior
       state.js        shared shell bindings (desk element, session start)
       launchers.js    pinned dock/desktop catalog
@@ -102,6 +106,9 @@ os-web/
   scripts/test-relay.mjs    relay listing-client fixtures
   scripts/test-schnorr.mjs  BIP-340 official test vectors
   scripts/test-trust.mjs    publisher trust-binding fixtures
+  scripts/test-crypt.mjs    file-encryption + key-wrap fixtures
+  scripts/test-cloudfile.mjs encrypted-file manifest + Blossom auth fixtures
+  scripts/test-registry.mjs open-with glob matching + file-type dispatch fixtures
   scripts/sign-catalog.mjs  re-sign the catalog snapshot
   scripts/sign-release.mjs  sign a packaged release
   scripts/list-release.mjs  build + sign a Nostr listing event

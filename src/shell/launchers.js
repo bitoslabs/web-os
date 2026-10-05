@@ -10,7 +10,9 @@
 export const SHELL_APPS = [
   ['get-started', 'get started', 'check'],
   ['files', 'files', 'fold'],
+  ['notes', 'notes', 'note'],
   ['terminal', 'terminal', 'term'],
+  ['calculator', 'calculator', 'calc'],
   ['nostr', 'nostr', 'bolt'],
   ['handbook', 'handbook', 'book'],
   ['store', 'app store', 'down'],

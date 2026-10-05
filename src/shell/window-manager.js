@@ -24,7 +24,7 @@ export const WM = {
     const d = deskEl.getBoundingClientRect();
     const W = Math.min(a.w, d.width / z - 16), H = Math.min(a.h, d.height / z - 16);
     const x = Math.round(64 + (this.seq % 6) * 38), y = Math.round(30 + (this.seq % 6) * 30); this.seq++;
-    const w = { id, key, app: a, min: false, max: false, snapped: false, prev: null, cleanup: null, run: null, render: null, tools: null };
+    const w = { id, key, app: a, opts: opts || {}, min: false, max: false, snapped: false, prev: null, cleanup: null, run: null, render: null, tools: null };
     const e = el('section', 'win focused');
     e.style.cssText = `left:${x}px;top:${y}px;width:${W}px;height:${H}px;z-index:${raiseZ()}`;
     const unified = !!a.unified;
