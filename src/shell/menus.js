@@ -53,6 +53,14 @@ export function toggleMenu(btn, which, dir = 'down') {
   openMenu(btn, menuItems(which), dir); btn.classList.add('open'); menuBtn = btn;
 }
 export function menuItems(which) {
+  const base = baseMenuItems(which);
+  const menu = WM.cur && WM.cur.menu;
+  const app = typeof menu === 'function' ? menu() : menu;
+  const appItems = app && app[which];
+  return (appItems && appItems.length) ? [...appItems, '-', ...base] : base;
+}
+
+function baseMenuItems(which) {
   const d = store.d;
   switch (which) {
     case 'app': return [
@@ -79,6 +87,7 @@ export function menuItems(which) {
       const out = [
         { t: 'minimize', k: '<kbd>alt m</kbd>', fn: () => { WM.cur && WM.minimize(WM.cur); } },
         { t: 'zoom', fn: () => { WM.cur && WM.toggleMax(WM.cur); } },
+        { t: WM.cur && WM.cur.full ? 'exit full screen' : 'enter full screen', k: '<kbd>ctrl cmd f</kbd>', fn: () => { WM.cur && WM.toggleFull(WM.cur); } },
         { t: 'minimize all', fn: () => { for (const w of WM.wins.values()) if (!w.min) WM.minimize(w); } }, '-'];
       const ws = [...WM.wins.values()];
       if (!ws.length) out.push({ t: 'no windows', dis: true });

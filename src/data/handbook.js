@@ -38,7 +38,7 @@ export const HBDATA = [
         ['acc-t2', 'rgba(139,92,246,.30)', 'chart fills']])}
   ${G('ansi semantics', [['ok · ansi 32', '#58c26c', 'success · switch ON'], ['warn · ansi 33', '#e0a94a', 'caution, connecting'],
         ['err · ansi 31', '#e5484d', 'failure, secrets'], ['cyan · ansi 36', '#54b9c7', 'metadata, paths']])}
-  ${G('window controls', [['close', '#ff5f57', 'red — closes'], ['minimize', '#febc2e', 'yellow — docks'], ['zoom', '#28c840', 'green — fills screen']])}
+  ${G('window controls', [['close', '#ff5f57', 'red — closes'], ['minimize', '#febc2e', 'yellow — docks'], ['full screen', '#28c840', 'green — full screen, hides the dock']])}
   <div class="prose"><p><strong>materials rule:</strong> frosted glass (rgba ~70% + <code>blur(26px)
   saturate(1.6)</code>) is allowed only on chrome that floats <em>over</em> content — menu bar, dock,
   menus, spotlight, control center, notifications. window bodies stay opaque for readability.

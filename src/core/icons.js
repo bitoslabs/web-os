@@ -22,6 +22,14 @@ export const ICONS = {
   doc: '<path d="M6.5 3.5h7l4 4v13h-11z"/><path d="M13.5 3.5v4h4"/>',
   pen: '<path d="M4 20l3.6-.8L18.4 8.4a1.8 1.8 0 0 0 0-2.5l-.3-.3a1.8 1.8 0 0 0-2.5 0L4.8 16.4z"/><path d="M14.9 6.9l2.2 2.2"/>',
   refresh: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4.5V9h-4.5"/>',
+  undo: '<path d="M8.5 6.5 4 11l4.5 4.5"/><path d="M4 11h9.2a4.8 4.8 0 0 1 0 9.6H8"/>',
+  redo: '<path d="M15.5 6.5 20 11l-4.5 4.5"/><path d="M20 11h-9.2a4.8 4.8 0 0 0 0 9.6H16"/>',
+  just: '<path d="M4 6h16M4 10h16M4 14h16M4 18h16"/>',
+  ruler: '<rect x="3" y="9" width="18" height="6" rx="1"/><path d="M6 9v2.5M9 9v3.5M12 9v2.5M15 9v3.5M18 9v2.5"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  alignl: '<path d="M4 6h16M4 10h10M4 14h16M4 18h10"/>',
+  alignc: '<path d="M4 6h16M7 10h10M4 14h16M7 18h10"/>',
+  alignr: '<path d="M4 6h16M10 10h10M4 14h16M10 18h10"/>',
   ext: '<path d="M14 5h5v5"/><path d="M19 5l-7.5 7.5"/><path d="M18 14v4H6V6h4"/>',
   win: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 9h17"/>',
   home: '<path d="M3.8 11.6 12 4.4l8.2 7.2"/><path d="M6.2 10.4V20h11.6v-9.6"/><path d="M10 20v-5h4v5"/>',
@@ -44,6 +52,13 @@ export const ICONS = {
   upload: '<path d="M12 19V8.5"/><path d="M7.8 12.7 12 8.5l4.2 4.2"/><path d="M4.5 4.5h15"/>',
   cloud: '<path d="M7 18.5h9.6a4 4 0 0 0 .5-8A5.4 5.4 0 0 0 6.9 9.9 3.8 3.8 0 0 0 7 18.5Z"/>',
   lock: '<rect x="5.5" y="10.5" width="13" height="9" rx="1.6"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>',
+  film: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M8 4.5v15M16 4.5v15M3.5 9H8M3.5 15H8M16 9h4.5M16 15h4.5"/>',
+  play: '<path d="M8.5 5.5v13L19 12z" fill="currentColor" stroke="none"/>',
+  pause: '<path d="M9 5.5v13M15 5.5v13"/>',
+  loop: '<path d="M4.5 9.5A4.5 4.5 0 0 1 9 5h9.5"/><path d="M16 2.5 19.5 5 16 7.5"/><path d="M19.5 14.5A4.5 4.5 0 0 1 15 19H5.5"/><path d="M8 21.5 4.5 19 8 16.5"/>',
+  vol: '<path d="M4 9.5h3.5L12 6v12L7.5 14.5H4z"/><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/><path d="M18 7.5a6.5 6.5 0 0 1 0 9"/>',
+  mute: '<path d="M4 9.5h3.5L12 6v12L7.5 14.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.2"/><path d="M12 7.8v.1"/>',
 };
 export const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="square">${ICONS[n] || ''}</svg>`;
 export const LOGO = `<svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="1" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-opacity=".4"/><path d="M10.2 3.2 5.4 10h2.8L7.2 14.8 12.6 8H9.8z" fill="#8b5cf6"/></svg>`;

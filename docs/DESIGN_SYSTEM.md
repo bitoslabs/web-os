@@ -128,7 +128,7 @@ Windows are keyed by a window key (`WM.open(id,{key,title})`); multiple windows 
 
 ## Layers (z-index)
 
-`desktop content 2–16` → `windows 20–590` → `dock, menu bar 600` → `menus, control center 900` → `spotlight 1000` → `launchpad 1050` → `toasts 1100` → `lock 1500` → `boot 2000`. Window stacking is capped below the dock/menu bar (`Z_MAX = 590`) and renormalized, so a focused or zoomed window never covers the chrome.
+`desktop content 2–16` → `windows 20–590` → `dock, menu bar 600` → `menus, control center 900` → `spotlight 1000` → `launchpad 1050` → `toasts 1100` → `lock 1500` → `boot 2000`. Window stacking is capped below the dock/menu bar (`Z_MAX = 590`) and renormalized, so a focused or maximized window never covers the chrome. True full screen (green light, Esc to exit) is the exception: `body.winfull` hides the menu bar and dock and lets that one window fill the viewport; it restores on close, minimize, focus change, or drag.
 
 ## Voice
 

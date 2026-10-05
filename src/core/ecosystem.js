@@ -17,10 +17,13 @@ export const DATA_QUOTA = 64 * 1024;
 export const PACKAGE_MAX = 600 * 1024;
 
 /* Versioned host capabilities an app may request. New names appear here first. */
-export const PERMISSIONS = Object.freeze(['app.storage', 'app.window']);
+export const PERMISSIONS = Object.freeze(['app.storage', 'app.window', 'app.menu', 'app.print', 'fs.files']);
 export const PERMISSION_LABELS = Object.freeze({
   'app.storage': 'private storage — quota-limited app data',
   'app.window': 'window controls — title and size',
+  'app.menu': 'app menu — contribute commands to the menu bar',
+  'app.print': 'printing — send a document to the printer',
+  'fs.files': 'file access — open and save documents via Files',
 });
 
 const APP_ID_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;

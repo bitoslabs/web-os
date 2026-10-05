@@ -8,10 +8,14 @@ apps/
   about/            Bitos version and project information
   browser/          Web browsing without native privilege
   calculator/       Offline calculator
+  docs/             Word processing (.docx) — Bitos Office
+  sheets/           Spreadsheet with formulas — Bitos Office
+  slides/           Presentation editor — Bitos Office
   files/            File manager (Finder-style)
   get-started/      First-session onboarding checklist
   handbook/         Offline help and live design-system reference
   image-viewer/     Local image viewing
+  video-player/     Local video playback with a playlist
   notes/            Quick notes with autosave
   nostr/            Preview identity, relay, feed, and zap experience
   screenshots/      Screen capture UI and save flow

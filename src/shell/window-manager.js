@@ -7,9 +7,12 @@ import { mark } from './tour.js';
 
 let zTop = 20;
 /* Windows stack from Z_BASE and never reach the chrome layer (dock/menu bar at
- * 600), so a focused or full-screen window can never cover the dock. When the
- * counter nears the cap, renormalize all windows to keep relative order. */
+ * 600), so a focused or maximized window can never cover the dock. The one
+ * exception is true full screen: `body.winfull` hides the chrome and lets the
+ * window fill the viewport. When the counter nears the cap, renormalize all
+ * windows to keep relative order. */
 const Z_BASE = 20, Z_MAX = 590;
+let fullWin = null;
 
 /* ================= window manager (aqua) ================= */
 export const WM = {
@@ -24,7 +27,7 @@ export const WM = {
     const d = deskEl.getBoundingClientRect();
     const W = Math.min(a.w, d.width / z - 16), H = Math.min(a.h, d.height / z - 16);
     const x = Math.round(64 + (this.seq % 6) * 38), y = Math.round(30 + (this.seq % 6) * 30); this.seq++;
-    const w = { id, key, app: a, opts: opts || {}, min: false, max: false, snapped: false, prev: null, cleanup: null, run: null, render: null, tools: null };
+    const w = { id, key, app: a, opts: opts || {}, min: false, max: false, snapped: false, full: false, preFull: null, prev: null, cleanup: null, run: null, render: null, tools: null };
     const e = el('section', 'win focused');
     e.style.cssText = `left:${x}px;top:${y}px;width:${W}px;height:${H}px;z-index:${raiseZ()}`;
     const unified = !!a.unified;
@@ -32,7 +35,7 @@ export const WM = {
       <span class="wtl">
         <button class="c" data-a="close" title="close">${TSVG.c}</button>
         <button class="m" data-a="min" title="minimize">${TSVG.m}</button>
-        <button class="z" data-a="zoom" title="zoom">${TSVG.z}</button></span>
+        <button class="z" data-a="zoom" title="full screen">${TSVG.z}</button></span>
       ${unified ? '<div class="win-tools"></div>' : `<span class="win-title">${esc((opts && opts.title) || a.title)}</span>`}</header>
       <div class="win-body"></div>
       <i class="w-rz w-rz-n" data-dir="n"></i><i class="w-rz w-rz-s" data-dir="s"></i>
@@ -53,13 +56,15 @@ export const WM = {
     e.querySelector('.wtl').addEventListener('click', ev => {
       const b = ev.target.closest('button'); if (!b) return;
       const act = b.dataset.a;
-      if (act === 'close') this.close(w); else if (act === 'min') this.minimize(w); else this.toggleMax(w);
+      if (act === 'close') this.close(w); else if (act === 'min') this.minimize(w); else this.toggleFull(w);
     });
     const snapEl = $('#snap');
     const head = e.querySelector('.win-head');
     head.addEventListener('pointerdown', ev => {
       if (ev.target.closest('button,input,select,textarea,a,[data-no-drag]')) return;
+      if (ev.target.closest('[data-title][contenteditable="true"]')) return; // renaming
       this.focus(w);
+      if (w.full) exitFull(w, true);
       const z = uiZoom();
       const dR = deskEl.getBoundingClientRect();
       const dW = dR.width / z, dH = dR.height / z;
@@ -108,9 +113,14 @@ export const WM = {
         }
         document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up);
       };
-      document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up); ev.preventDefault();
+      document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up);
+      /* Keep the native dblclick for an editable title in the header. */
+      if (!ev.target.closest('[data-title]')) ev.preventDefault();
     });
-    head.addEventListener('dblclick', ev => { if (!ev.target.closest('button,input,select,textarea,a,[data-no-drag]')) this.toggleMax(w); });
+    head.addEventListener('dblclick', ev => {
+      if (ev.target.closest('button,input,select,textarea,a,[data-no-drag],[data-title]')) return;
+      if (w.full) exitFull(w); else this.toggleMax(w);
+    });
     e.querySelectorAll('.w-rz').forEach(g => g.addEventListener('pointerdown', ev => {
       if (store.d && store.d.resize === false) return;
       ev.preventDefault(); ev.stopPropagation(); this.focus(w); w.max = false; w.snapped = false;
@@ -139,6 +149,7 @@ export const WM = {
     return w;
   },
   focus(w) {
+    if (fullWin && fullWin !== w) exitFull(fullWin);
     document.querySelectorAll('.win.focused').forEach(x => x.classList.remove('focused'));
     w.el.classList.add('focused'); w.el.style.zIndex = raiseZ(); this.cur = w; dockSync();
     if (mbAppEl) mbAppEl.textContent = w.app.title;
@@ -146,12 +157,15 @@ export const WM = {
     else if (w.id === 'terminal') { const i = w.el.querySelector('.t-in'); i && i.focus(); }
   },
   close(w) {
+    if (w.full) exitFull(w);
     try { w.cleanup && w.cleanup(); } catch (e) { }
     if (this.cur === w) this.cur = null; w.el.remove(); this.wins.delete(w.key);
     this.focusNext(); dockSync();
   },
   minimize(w) {
-    if (w.min) return; w.min = true;
+    if (w.min) return;
+    if (w.full) exitFull(w, true);
+    w.min = true;
     const e = w.el, r = e.getBoundingClientRect();
     const dk = document.querySelector(`.dk[data-app="${w.id}"]`) || $('#dock');
     const dr = dk.getBoundingClientRect();
@@ -195,6 +209,17 @@ export const WM = {
       w.max = true; w.snapped = false;
     }
   },
+  toggleFull(w) {
+    if (w.full) { exitFull(w); return; }
+    if (fullWin && fullWin !== w) exitFull(fullWin);
+    w.preFull = { max: w.max, snapped: w.snapped };
+    w.max = false; w.snapped = false; w.full = true;
+    fullWin = w;
+    document.body.classList.add('winfull');
+    w.el.classList.add('fs-anim', 'full');
+    setTimeout(() => w.el.classList.remove('fs-anim'), 340);
+    this.focus(w); dockSync();
+  },
   focusNext() {
     let best = null, bz = -1;
     for (const w of this.wins.values()) { if (w.min) continue; const z = +w.el.style.zIndex || 0; if (z > bz) { bz = z; best = w; } }
@@ -202,6 +227,25 @@ export const WM = {
     else { this.cur = null; if (mbAppEl) mbAppEl.textContent = 'bitos'; dockSync(); }
   }
 };
+
+/* Leave true full screen, restoring the window's prior geometry and max/snap
+ * flags. Inline geometry is never overwritten while full, so removing the class
+ * returns the window to where it was. `snap` skips the shrink animation when the
+ * caller (drag, minimize) needs the restored rect immediately. */
+function exitFull(w, snap) {
+  if (!w || !w.full) return;
+  if (!snap) w.el.classList.add('fs-anim');
+  w.el.classList.remove('full');
+  if (!snap) setTimeout(() => w.el.classList.remove('fs-anim'), 340);
+  const p = w.preFull || {};
+  w.max = !!p.max; w.snapped = !!p.snapped;
+  w.full = false; w.preFull = null;
+  if (fullWin === w) fullWin = null;
+  if (!fullWin) document.body.classList.remove('winfull');
+}
+
+/* Esc leaves full screen, matching the platform gesture. */
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && fullWin) exitFull(fullWin); });
 
 /* Raise a window while keeping every window below the chrome layer. */
 function raiseZ() {

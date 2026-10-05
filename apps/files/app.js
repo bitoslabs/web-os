@@ -208,7 +208,10 @@ registerApp('files', {
     }
 
     /* ---- item actions ---- */
-    const toggleSel = name => { const t = tab(); updateTab({ sel: t.sel === name ? null : name }); };
+    const toggleSel = name => {
+      const t = tab(); updateTab({ sel: t.sel === name ? null : name });
+      try { body.focus({ preventScroll: true }); } catch (e) { body.focus(); }
+    };
     const openItem = e => e.dir ? nav(join(tab().cwd, e.name)) : openEntry(e.name);
     const TEXT_EXT = new Set(['txt', 'md', 'markdown', 'json', 'js', 'mjs', 'cjs', 'css', 'html', 'htm', 'xml', 'csv', 'tsv', 'log', 'yml', 'yaml', 'ini', 'conf', 'sh', 'py', 'ts', 'tsx', 'jsx', 'c', 'h', 'cpp', 'rs', 'go', 'toml']);
     const isTextish = n => TEXT_EXT.has(ext(n)) || /^text\//.test(mimeOf(n));
@@ -223,6 +226,58 @@ registerApp('files', {
         try {
           const bytes = await fsapi.readBytes(path);
           WM.open('image-viewer', { key: 'image-viewer#' + path, title: name, file: { name, mime, size: bytes.length, url: URL.createObjectURL(new Blob([bytes], { type: mime })) } });
+        } catch (e) { toast(`open: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+        return;
+      }
+      if (opener === 'video-player') {
+        try {
+          const bytes = await fsapi.readBytes(path);
+          WM.open('video-player', { key: 'video-player#' + path, title: name, file: { name, mime, size: bytes.length, url: URL.createObjectURL(new Blob([bytes], { type: mime })) } });
+        } catch (e) { toast(`open: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+        return;
+      }
+      if (opener === 'docs') {
+        try {
+          const bytes = await fsapi.readBytes(path);
+          WM.open('docs', {
+            key: 'docs#' + path, title: name,
+            file: {
+              name, mime, size: bytes.length, bytes,
+              save: out => (out instanceof Uint8Array || out instanceof ArrayBuffer)
+                ? fsapi.writeBytes(path, out instanceof Uint8Array ? out : new Uint8Array(out), 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                : fsapi.writeText(path, out),
+            },
+          });
+        } catch (e) { toast(`open: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+        return;
+      }
+      if (opener === 'sheets') {
+        try {
+          const bytes = await fsapi.readBytes(path);
+          WM.open('sheets', {
+            key: 'sheets#' + path, title: name,
+            file: {
+              name, mime, size: bytes.length, bytes,
+              save: out => (out instanceof Uint8Array || out instanceof ArrayBuffer)
+                ? fsapi.writeBytes(path, out instanceof Uint8Array ? out : new Uint8Array(out), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                : fsapi.writeText(path, out),
+            },
+          });
+        } catch (e) { toast(`open: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
+        return;
+      }
+      if (opener === 'slides') {
+        try {
+          const bytes = await fsapi.readBytes(path);
+          WM.open('slides', {
+            key: 'slides#' + path, title: name,
+            file: {
+              name, mime, size: bytes.length, bytes,
+              save: out => (out instanceof Uint8Array || out instanceof ArrayBuffer)
+                ? fsapi.writeBytes(path, out instanceof Uint8Array ? out : new Uint8Array(out), 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+                : fsapi.writeText(path, out),
+            },
+          });
         } catch (e) { toast(`open: <b>${esc(e.code || 'INTERNAL')}</b> — ${esc(e.message || '')}`, 'err'); }
         return;
       }
@@ -538,6 +593,7 @@ registerApp('files', {
         div({ class: 'fm-status' }, () => statusNode())));
 
     van.add(body, App());
+    body.tabIndex = -1;
     if (win && win.tools) win.tools.append(toolbar());
     else body.querySelector('.fm-main').prepend(toolbar());
     bodyEl = body.querySelector('.fm-body');
@@ -578,6 +634,14 @@ registerApp('files', {
         if (!editor.val) uploadFiles(e.dataTransfer.files);
       });
     }
+    body.addEventListener('keydown', e => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      if (editor.val || renaming.val) return;
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      if (!tab().sel) return;
+      e.preventDefault(); deleteSel();
+    });
     nav('');
   }
 });

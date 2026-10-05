@@ -15,11 +15,12 @@ registerApp('shortcuts', {
     <div class="kr"><span class="kk"><kbd>alt</kbd><kbd>w</kbd></span>close window · <span class="mono-dim">browsers reserve ⌘W, so we use ⌥</span></div>
     <div class="kr"><span class="kk"><kbd>alt</kbd><kbd>m</kbd></span>minimize window</div>
     <div class="kr"><span class="kk"><kbd>alt</kbd><kbd>,</kbd></span>settings</div>
-    <div class="kr"><span class="kk"><kbd>esc</kbd></span>close menu / spotlight</div>
+    <div class="kr"><span class="kk"><kbd>ctrl</kbd><kbd>cmd</kbd><kbd>f</kbd></span>full screen — hides the dock and menu bar</div>
+    <div class="kr"><span class="kk"><kbd>esc</kbd></span>close menu / spotlight · leave full screen</div>
     <span class="lbl kg">mouse &amp; gestures</span>
     <div class="kr"><span class="kk">dock</span>hover magnifies · dot = running · tint = focused · badge = window count</div>
     <div class="kr"><span class="kk">right-click dock icon</span>new window · show all · quit</div>
-    <div class="kr"><span class="kk">traffic lights</span>red close · yellow docks · green zooms</div>
+    <div class="kr"><span class="kk">traffic lights</span>red close · yellow docks · green full screen</div>
     <div class="kr"><span class="kk">drag title bar</span>move the window</div>
     <div class="kr"><span class="kk">drag to screen edge</span>snap — left/right = half · top = zoom</div>
     <div class="kr"><span class="kk">drag a zoomed window</span>pulls it off at full size, under your cursor</div>

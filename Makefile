@@ -22,6 +22,7 @@ check-package:
 	node scripts/test-crypt.mjs
 	node scripts/test-cloudfile.mjs
 	node scripts/test-registry.mjs
+	node scripts/test-office.mjs
 
 ## Build a .bitos-app from SRC (default templates/installable-app)
 pack:

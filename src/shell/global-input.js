@@ -30,6 +30,7 @@ function onGlobalKey(e) {
   if (e.code === 'KeyW' && e.altKey) { e.preventDefault(); WM.cur && WM.close(WM.cur); }
   if (e.code === 'KeyM' && e.altKey) { e.preventDefault(); WM.cur && WM.minimize(WM.cur); }
   if (e.code === 'Comma' && e.altKey) { e.preventDefault(); WM.open('settings'); }
+  if (e.code === 'KeyF' && e.ctrlKey && e.metaKey) { e.preventDefault(); WM.cur && WM.toggleFull(WM.cur); }
   if (e.code === 'Space' && e.ctrlKey) { e.preventDefault(); openSpot(); }
   if (e.code === 'KeyK' && e.ctrlKey && !e.shiftKey) {
     e.preventDefault();

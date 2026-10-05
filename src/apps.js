@@ -6,6 +6,8 @@
    relative to this file, so they resolve under /apps regardless of host.
    ========================================================================== */
 
+import { loadOfficeApps } from './office/suite.js';
+
 export const BUILT_IN_APPS = [
   'files',
   'terminal',
@@ -13,6 +15,7 @@ export const BUILT_IN_APPS = [
   'calculator',
   'text-editor',
   'image-viewer',
+  'video-player',
   'screenshots',
   'browser',
   'handbook',
@@ -27,5 +30,8 @@ export const BUILT_IN_APPS = [
 ];
 
 export async function loadApps() {
-  await Promise.all(BUILT_IN_APPS.map(id => import(`../apps/${id}/app.js`)));
+  await Promise.all([
+    ...BUILT_IN_APPS.map(id => import(`../apps/${id}/app.js`)),
+    loadOfficeApps(),
+  ]);
 }
