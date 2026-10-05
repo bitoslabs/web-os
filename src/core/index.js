@@ -24,3 +24,4 @@ export * from './discovery.js';
 export * from './crypt.js';
 export * from './blob.js';
 export * from './cloudfile.js';
+export * from './filesync.js';

@@ -26,7 +26,6 @@ function evNode(ev) {
   if (z) z.onclick = () => {
     store.d.satsOut += 21; store.save(); mark('zap'); flashSats();
     const w = WM.wins.get('nostr'); if (w && w.renderBal) w.renderBal();
-    toast(`you zapped <b>${esc(ev.author)}</b> 21 sats`, 'zap');
   };
   return n;
 }

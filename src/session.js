@@ -5,7 +5,7 @@
    center, global input, and the lock/reveal flow. Program behavior lives in
    apps/<app-id>/; this file only coordinates the session.
    ========================================================================== */
-import { $, esc, store, toast, petname } from './core/index.js';
+import { $, esc, store, toast, petname, syncFilesOnLogin } from './core/index.js';
 import { setDeskEl, startSessionClock } from './shell/state.js';
 import { buildMenubar, setAccent, updatePills } from './shell/menubar.js';
 import { applyAppearance } from './shell/menus.js';
@@ -71,6 +71,12 @@ export function startOS(fresh) {
 
 export function reveal(fresh) {
   SIM.start(); updatePills();
+  /* Home files/folders sync on login (unlock or first boot). */
+  syncFilesOnLogin().then(st => {
+    if (st.state === 'pulled') toast('restored your home from sync', 'ok');
+    else if (st.state === 'merged') toast('home synced — merged with the remote copy', 'info');
+    else if (st.state === 'error') toast('home sync failed — ' + esc(st.error || 'unknown error'), 'err');
+  });
   if (fresh) {
     WM.open('get-started');
     toast(`welcome, <b>${esc(store.d.pet)}</b> — your account is your key`, 'zap',

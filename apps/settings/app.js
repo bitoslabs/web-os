@@ -1,7 +1,7 @@
 /* Built-in app: Settings. macOS-style sidebar + search + detail. Preview state
  * persists to localStorage; device backlight, audio, network, and power actions
  * require the native services in docs/NATIVE_API.md before they do anything. */
-import { registerApp, store, esc, el, icon, trunc, wireComp, toast, dialog, native, clamp, SYSINFO, drawIdenticon, genKey, petname, copyText } from '../../src/core/index.js';
+import { registerApp, store, esc, el, icon, trunc, wireComp, toast, dialog, native, clamp, SYSINFO, drawIdenticon, genKey, petname, copyText, filesSyncConfig, configureFilesSync, filesSyncStatus } from '../../src/core/index.js';
 import { setAccent, syncAccentUI, updatePills, ACCENT_COLORS, ACCENT_SWATCHES, accentHexOf, accentName } from '../../src/shell/menubar.js';
 import { syncCC } from '../../src/shell/control-center.js';
 import { mark } from '../../src/shell/tour.js';
@@ -68,6 +68,29 @@ registerApp('settings', {
         pick.oninput = e => { setAccent('custom', e.target.value); mark('accent'); syncCC(); };
         // keep the name and selection in sync while this pane stays open
         const iv = setInterval(() => { const row = body.querySelector('[data-r="accent"]'); if (!row) { clearInterval(iv); return; } row.querySelector('[data-accname]').textContent = accentName(); }, 800);
+      } };
+
+    const filesSyncLabel = () => {
+      const st = filesSyncStatus();
+      return ({ off: 'off', idle: 'idle', syncing: 'syncing…', synced: 'backed up', pulled: 'restored', merged: 'merged', error: 'error' })[st.state] || st.state;
+    };
+    const filesyncRow = { id: 'filesync', type: 'custom', label: 'sync home', desc: 'back up files & folders to the sync store on login', html:
+      `<div class="u-row u-gap-8"><button class="sw2" data-fsyn role="switch" aria-label="sync home on login"><i></i></button><span class="mono-dim" data-fsync-status></span></div>`,
+      wire(root) {
+        const sw = root.querySelector('[data-fsyn]'), out = root.querySelector('[data-fsync-status]');
+        const paint = () => {
+          const c = filesSyncConfig();
+          sw.classList.toggle('on', c.enabled);
+          sw.setAttribute('aria-checked', c.enabled ? 'true' : 'false');
+          out.textContent = c.enabled ? filesSyncLabel() : 'off';
+        };
+        sw.onclick = () => {
+          const c = configureFilesSync({ enabled: !filesSyncConfig().enabled });
+          paint();
+          toast('home sync ' + (c.enabled ? 'on' : 'off'), c.enabled ? 'ok' : 'info');
+        };
+        paint();
+        const iv = setInterval(() => { if (!body.contains(root)) { clearInterval(iv); return; } paint(); }, 800);
       } };
 
     const resetBtn = el => {
@@ -340,6 +363,7 @@ registerApp('settings', {
       { id: 'storage', name: 'storage', icon: 'home', cap: 'system', groups: [
         { rows: [
           BA('disk', { label: 'data partition', desc: 'preview estimate · 32 gb total', pct, get: () => usedTxt }),
+          filesyncRow,
           BT('caches', { label: 'clear caches', desc: 'preview — reports freed space only', btn: 'clear', cls: 'sm', fn: () => toast('preview only — caches are not real yet', 'info') }),
         ] },
       ] },

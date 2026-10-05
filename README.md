@@ -62,6 +62,7 @@ os-web/
       crypt.js        AES-256-GCM file encryption + PBKDF2 key wrap (WebCrypto)
       blob.js         Blossom (BUD-02/11) content-addressed blob client + auth
       cloudfile.js    encrypted-file manifest: encrypt+upload / fetch+decrypt
+      filesync.js     home files/folders sync to a simulated remote (on login)
       index.js        barrel re-export of the core
     data/             content and simulation, separated from programs
       handbook.js     HBDATA design-system sections
@@ -108,6 +109,7 @@ os-web/
   scripts/test-trust.mjs    publisher trust-binding fixtures
   scripts/test-crypt.mjs    file-encryption + key-wrap fixtures
   scripts/test-cloudfile.mjs encrypted-file manifest + Blossom auth fixtures
+  scripts/test-filesync.mjs home filesystem sync push/pull/merge fixtures
   scripts/test-registry.mjs open-with glob matching + file-type dispatch fixtures
   scripts/sign-catalog.mjs  re-sign the catalog snapshot
   scripts/sign-release.mjs  sign a packaged release

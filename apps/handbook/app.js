@@ -1,6 +1,6 @@
 /* Built-in app: Handbook. Trusted local design/help content also indexed by
  * the spotlight search. Keep remote content out of this privileged context. */
-import { registerApp, el, store, wireComp, drawIdenticon, toast } from '../../src/core/index.js';
+import { registerApp, el, store, wireComp, drawIdenticon } from '../../src/core/index.js';
 import { flashSats } from '../../src/shell/menubar.js';
 import { mark } from '../../src/shell/tour.js';
 import { openSpot } from '../../src/shell/search.js';
@@ -32,10 +32,8 @@ registerApp('handbook', {
       const zd = e.target.closest('[data-zd]');
       if (zd) {
         store.d.satsIn += 21; store.save(); mark('zap'); flashSats();
-        toast('handbook demo: <b>+21 sats</b> for the good taste', 'zap');
       }
       const sd = e.target.closest('[data-sd]'); if (sd) openSpot();
-      const td = e.target.closest('[data-td]'); if (td) toast('this is what a banner sounds like', 'info');
       const mo = e.target.closest('[data-mo]');
       if (mo) { const t = main.querySelector('.mo-tile'); t.classList.remove('go'); void t.offsetWidth; t.classList.add('go'); }
     });

@@ -87,10 +87,9 @@ export const HBDATA = [
   <div class="crow"><span class="lbl">keyboard</span>
     <kbd>ctrl</kbd><kbd>space</kbd><span class="mono-dim">spotlight</span>
     <kbd>?</kbd><span class="mono-dim">shortcuts</span><kbd>alt</kbd><kbd>w</kbd><span class="mono-dim">close</span></div>
-  <div class="crow"><span class="lbl">zap + spotlight + toast — try them</span>
+  <div class="crow"><span class="lbl">zap + spotlight — try them</span>
     <button class="zb" data-zd>${BOLTICON(10)}<span>zap 21</span></button>
-    <button class="btn ghost sm" data-sd>open spotlight</button>
-    <button class="btn ghost sm" data-td>trigger banner</button></div>
+    <button class="btn ghost sm" data-sd>open spotlight</button></div>
   <div class="anat"><span class="lbl" style="width:100%">window anatomy</span>
     <div style="display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start">
     <div class="anat-win"><div class="ah"><span class="al"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></span><span class="t">terminal</span></div>

@@ -5,7 +5,7 @@
    production network or cryptographic service. Shared by the shell status
    pills and the nostr / terminal / sysmon apps.
    ========================================================================== */
-import { toast, esc, clamp, rint, pick, store, petname, bech32 } from '../core/index.js';
+import { clamp, rint, pick, store, petname, bech32 } from '../core/index.js';
 import { WM } from '../shell/window-manager.js';
 import { flashSats, updatePills } from '../shell/menubar.js';
 
@@ -120,14 +120,12 @@ export const SIM = {
   start() {
     if (this.t) return;
     if (!this.events.length) this.seed();
-    setTimeout(() => toast(`<b>relaysd:</b> ${this.up}/${this.relays.length} relays up`, 'ok', { label: 'open feed', fn: () => WM.open('nostr') }), 900);
     const tick = () => {
       const up = this.rRelays; if (up.length) {
         const ev = this.mk(); ev.relay = pick(up).host; this.events.unshift(ev);
         store.d.seen++; this.hits.push(Date.now());
         if (ev.kind === 9735) {
           store.d.satsIn += ev.amt; store.save(); flashSats();
-          toast(`+<b>${ev.amt} sats</b> from ${esc(ev.author)}`, 'zap', { label: 'open feed', fn: () => WM.open('nostr') });
         }
         if (store.d.seen % 25 === 0) store.save();
         const w = WM.wins.get('nostr'); if (w && w.addEvent) w.addEvent(ev);
@@ -136,12 +134,6 @@ export const SIM = {
         const c = this.relays.filter(x => x.on && x.host !== 'relay.damus.io');
         if (c.length && Math.random() < .5) {
           const rl = pick(c); rl.on = false; this.recompute(); this.persist(); updatePills();
-          toast(`relay <b>${rl.host}</b> timed out`, 'err', {
-            label: 'rejoin', fn: () => {
-              rl.on = true; SIM.recompute(); SIM.persist(); updatePills(); SIM.refreshViews();
-              toast(`relay <b>${rl.host}</b> rejoined`, 'ok');
-            }
-          });
           this.refreshViews();
         }
       }
